@@ -2,6 +2,19 @@
 
 本项目的版本号跟随模组自身功能演进；MC 1.20.1 / Forge 47.x 为固定目标平台。
 
+## 1.5.1 — 2026-11-21
+
+**修复**
+- 拥抱时第三人称镜头不以拥抱为中心（两人跑到画面外/侧边）：
+  - 发起者在接受拥抱后也会转向接受者。原实现只让接受者转向，而接受者被摆到了「发起者身后」，
+    自动切第三人称后发起者的镜头仍朝着旧方向，整段拥抱都在画面外。
+  - 第三人称相机改为跟随**渲染模型的实际位置**。拥抱动画的 `body` 位移会把模型推离实体坐标约 1 格，
+    原版相机绕实体旋转，于是画面中心是空地、拥抱偏在一边。现通过 Access Transformer 打开
+    `Camera#setPosition(Vec3)`，在 `ViewportEvent.ComputeCameraAngles`（`Camera#setup` 之后、
+    `LevelRenderer#renderLevel` 之前）把相机平移到模型位置；第一人称不偏移。
+- 新增 `src/main/resources/META-INF/accesstransformer.cfg`（SRG 名 `m_90581_`），并在 `build.gradle`
+  启用 `accessTransformer`。首次构建会重新生成 AT 过的 Forge 工件（约 1 分钟）。
+
 ## 1.5 — 2026-11-21
 
 **新增**

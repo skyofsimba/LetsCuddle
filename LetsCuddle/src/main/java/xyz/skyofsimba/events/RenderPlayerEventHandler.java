@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.RenderPlayerEvent;
@@ -216,6 +217,53 @@ public final class RenderPlayerEventHandler {
         double deltaX = to.getX() - from.getX();
         double deltaZ = to.getZ() - from.getZ();
         return (float) Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0F;
+    }
+
+    /**
+     * v1.5.1：被渲染模型相对实体坐标的<b>世界空间水平位移</b>，供第三人称镜头偏移使用。
+     *
+     * <p>渲染时的矩阵链是 {@code Rx(180) · T(0,-1.5,0) · Ry(θ) · T(px, py+0.7, pz) · Rbody · T(0,-0.7,0)}
+     * （见 {@link #onRenderPlayer}），把 (px, pz) 依次过 Ry(θ) 与 Rx(180)（只翻 y/z 符号）就得到世界位移：
+     * <pre>
+     *   dx =  px·cosθ + pz·sinθ
+     *   dz =  px·sinθ − pz·cosθ
+     * </pre>
+     * 例：接受者在 (1.3,0,0)、面向 −X（θ=90°）、body.z=−1 → 位移 (−1,0,0)，模型落在 (0.3,0,0)，正确。
+     *
+     * @return 未在拥抱中 / 动作未激活时返回 {@link Vec3#ZERO}
+     */
+    public static Vec3 modelOffset(AbstractClientPlayer player, float partialTick) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) {
+            return Vec3.ZERO;
+        }
+        Lock lock = LOCKS.get(player.getUUID());
+        if (lock == null) {
+            return Vec3.ZERO;
+        }
+        Player partnerEntity = client.level.getPlayerByUUID(lock.partner());
+        if (!(partnerEntity instanceof AbstractClientPlayer partner)) {
+            return Vec3.ZERO;
+        }
+
+        var animation = ((IAnimatedPlayer) player).playerAnimator_getAnimation();
+        animation.setTickDelta(partialTick);
+        if (!animation.isActive()) {
+            return Vec3.ZERO;
+        }
+
+        Vec3f body = animation.get3DTransform("body", TransformType.POSITION, Vec3f.ZERO);
+        double theta = Math.toRadians(calculateYawToTarget(player, partner));
+        double px = body.getX();
+        double pz = body.getZ();
+        double dx = px * Math.cos(theta) + pz * Math.sin(theta);
+        double dz = px * Math.sin(theta) - pz * Math.cos(theta);
+        return new Vec3(dx, 0.0D, dz);
+    }
+
+    /** 该玩家当前是否处于拥抱锁定状态（镜头事件用）。 */
+    public static boolean isLocked(AbstractClientPlayer player) {
+        return LOCKS.containsKey(player.getUUID());
     }
 
     public static void lockPlayers(AbstractClientPlayer sender, AbstractClientPlayer receiver) {

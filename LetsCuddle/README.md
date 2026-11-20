@@ -44,6 +44,13 @@ gradlew.bat runServer    :: 开发服务端（run/，需先把 run/eula.txt 改�
 
 ## 开发环境注意
 
+**Access Transformer 用 SRG 名**：`src/main/resources/META-INF/accesstransformer.cfg` 里只有一行，
+把 `Camera#setPosition(Vec3)` 打开成 public（第三人称镜头偏移用）。ForgeGradle 6 的 AT 阶段跑在
+**SRG 命名**的注入 jar 上，所以这一行必须写 SRG 名 `m_90581_`，写官方名 `setPosition` 会静默不生效；
+打出来的 jar 里也带这份 AT，生产环境（同样是 SRG 命名）能正常应用。改完 AT 后首次构建会重新生成
+AT 过的 Forge 工件（约 1 分钟）；若报「Could not delete output file ... binpatched.jar」，删掉
+`build/fg_cache` 再构建即可。
+
 **MixinGradle 必须保留**（`buildscript` + `apply plugin: 'org.spongepowered.mixin'`）。
 本模组自身没有 mixin，但这个插件会给 run 任务注入
 `-Dmixin.env.remapRefMap=true` 与 `-Dmixin.env.refMapRemappingFile=build/createSrgToMcp/output.srg`；

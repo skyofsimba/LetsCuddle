@@ -1,12 +1,17 @@
 package xyz.skyofsimba.client;
 
+import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import xyz.skyofsimba.Letscuddle;
+import xyz.skyofsimba.events.RenderPlayerEventHandler;
 
 /**
  * 拥抱期间的第三人称切换（仅客户端、仅当事人）。
@@ -59,5 +64,35 @@ public final class HugCameraHandler {
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         active = false;
+    }
+
+    /**
+     * v1.5.1：第三人称镜头跟随「渲染模型的实际位置」。
+     *
+     * <p>原版第三人称相机绕实体坐标旋转（{@code Camera#setup} 里算好位置），
+     * 而拥抱动画的 {@code body} 位移把渲染模型推开了约 1 格，于是画面中心是空地、抱抱偏在一边。
+     * 本事件在 {@code Camera#setup} 之后、{@code LevelRenderer#renderLevel} 之前触发，
+     * 此时改相机位置会直接作用于这一帧（AT 把 {@code Camera#setPosition(Vec3)} 开成了 public）。
+     *
+     * <p>只在第三人称生效；第一人称相机就在眼睛上，不需要偏移。
+     */
+    @SubscribeEvent
+    public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+        Camera camera = event.getCamera();
+        if (!camera.isDetached()) {
+            return;
+        }
+        if (!(camera.getEntity() instanceof AbstractClientPlayer player)) {
+            return;
+        }
+        if (!RenderPlayerEventHandler.isLocked(player)) {
+            return;
+        }
+
+        Vec3 offset = RenderPlayerEventHandler.modelOffset(player, (float) event.getPartialTick());
+        if (offset.lengthSqr() < 1.0E-6D) {
+            return;
+        }
+        camera.setPosition(camera.getPosition().add(offset));
     }
 }

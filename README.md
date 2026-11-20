@@ -23,7 +23,8 @@
 - **抱抱券**：右键另一名玩家 → 对方聊天栏收到带 `[同意] / [拒绝]` 可点击按钮的请求，双方都不需要打指令
 - **两种拥抱动作**：普通拥抱 / 摸头拥抱，由**发起者自己选**（`潜行 + 右键` 切换，物品提示里会显示当前动作）
 - **64 格广播**：同一维度、64 格内的所有玩家都能看到这段拥抱
-- **自动第三人称**：拥抱开始时当事人自动切到第三人称；追尾视角下自己按 `F5` 改过视角的，结束后不会被打回原样
+- **自动第三人称**：拥抱开始时当事人自动切到第三人称，**镜头以渲染出来的拥抱模型为中心**；
+  追尾视角下自己按 `F5` 改过视角的，结束后不会被打回原样
 - **蹲下提前结束**：任一当事人按住潜行 0.25 秒即可结束（动作立刻收掉，不用等 6 秒）
 - **不打扰服务端**：专用服务端不需要安装 playerAnimator，也不会加载任何客户端类
 
@@ -104,7 +105,8 @@ cd LetsCuddle
 - **Hug Ticket** — right-click another player to send a hug request; they click `[Accept]` or `[Reject]` in chat
 - **Two animations** — normal hug and head-pat hug, **chosen by the sender** (`sneak + right-click` to switch, shown in the item tooltip)
 - **64-block broadcast** — every player within 64 blocks in the same dimension sees the hug
-- **Auto third person** — participants switch to third person when the hug starts; if you press `F5` yourself during the hug, your choice is respected
+- **Auto third person** — participants switch to third person when the hug starts; the camera **centers on the
+  rendered hug model**; if you press `F5` yourself during the hug, your choice is respected
 - **Cancel by sneaking** — hold sneak for 0.25 s to end the hug early (the animation stops immediately)
 - **Server friendly** — dedicated servers do not need playerAnimator and never load client classes
 

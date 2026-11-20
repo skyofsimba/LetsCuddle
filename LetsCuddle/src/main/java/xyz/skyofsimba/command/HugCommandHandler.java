@@ -180,6 +180,10 @@ public final class HugCommandHandler {
         receiver.teleportTo(stand.x, stand.y, stand.z);
         receiver.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(sender.getX(), sender.getEyeY(), sender.getZ()));
+        // v1.5.1：发起者也转向接受者。原实现只让接受者转头，发起者的第三人称镜头
+        // 还朝着旧方向，而接受者被摆到了「发起者身后」，自动切第三人称后整段拥抱会跑到画面外。
+        sender.lookAt(EntityAnchorArgument.Anchor.EYES,
+                new Vec3(receiver.getX(), receiver.getEyeY(), receiver.getZ()));
 
         broadcastHugStart(sender, receiver, request.animation());
         REQUESTS.remove(key);
