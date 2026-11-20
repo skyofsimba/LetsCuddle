@@ -103,13 +103,6 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', mod_id
         }
 
-        // 第二个开发客户端（双人验证拥抱用）：独立工作目录 + 独立用户名，避免与 client 抢登录态
-        client2 {
-            client true
-            args '--username', 'Dev2'
-            workingDirectory project.file('run2')
-        }
-
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
