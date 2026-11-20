@@ -1,0 +1,24 @@
+# ---- Gradle / 构建产物 ----
+.gradle/
+build/
+LetsCuddle/run/
+LetsCuddle/run2/
+LetsCuddle/run-data/
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# ---- IntelliJ IDEA ----
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ---- 系统杂项 ----
+.DS_Store
+Thumbs.db
+
+# ---- 临时工作目录 ----
+.wrapper-tmp/
