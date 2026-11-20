@@ -172,3 +172,15 @@ Development runs, two-client testing and the MixinGradle note for dev environmen
 
 Author's homepage (Bilibili): <https://space.bilibili.com/350703330>
 
+
+---
+
+## 文档 · Documentation
+
+| 文档 | 内容 |
+|---|---|
+| [doc/architecture.md](doc/architecture.md) | 当前实现架构：类职责、状态机、网络协议、渲染/相机/阴影管线 |
+| [doc/behavior-spec.md](doc/behavior-spec.md) | 当前行为规格与发版前验收清单（A/B/C/D/E） |
+| [doc/developing.md](doc/developing.md) | 开发环境、构建、双人测试、排错表、开发约定 |
+| [doc/original-design.md](doc/original-design.md) | 1.21 NeoForge 原版的逆向规格（参考上游，非当前实现） |
+| [doc/port-plan.md](doc/port-plan.md) | v1.3 时期的迁移方案（历史文档） |

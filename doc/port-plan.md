@@ -1,5 +1,10 @@
 # HugMe 1.20.1 Forge 迁移实施方案（port-plan）
 
+> **⚠️ 文档状态（2026-11-21 起）**：本文是 **v1.3 时期**的迁移方案，**已过时**。
+> 文中「服务端随机动作、无第三人称、无蹲下取消、协议 v1、移除 mixin 脚手架、无 Access Transformer」等描述均已被后续版本取代。
+> 当前实现请以 [`architecture.md`](architecture.md)（架构）、[`behavior-spec.md`](behavior-spec.md)（行为与验收）、
+> [`developing.md`](developing.md)（开发环境）为准；本文仅保留作为迁移过程的决策记录。
+
 > **配套文档**：`doc/original-design.md`（原模组的设计与行为规格）。本文只写「怎么搬」，行为语义、动作数据、常量来源一律以那份文档为准，不重复解释。
 > **目标读者**：执行迁移的 AI/工程师。读完本文应能独立产出可编译、可双人联机验证的 Forge 1.20.1 版本。
 > **本文假设**：原仓库 `D:\data\DSH\HugMe`（NeoForge 1.21，HEAD `e5fd1b3`）可读；工作目录是移植目标 `D:\data\DSH\HugMe-1.20.1-Port`。

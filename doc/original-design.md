@@ -1,5 +1,11 @@
 # HugMe 原始设计文档（NeoForge × Minecraft 1.21 × v1.3）
 
+> **⚠️ 文档状态（2026-11-21 起）**
+> 本文描述的是 **NeoForge 1.21 原版（HEAD `e5fd1b3`）** 的行为规格，是移植工作的**参考上游**。
+> 当前 1.20.1 Forge 实现的行为请以 [`behavior-spec.md`](behavior-spec.md) 为准，代码结构见 [`architecture.md`](architecture.md)。
+> 本文与现实现不一致之处（命名空间/命令名、动作选择、第三人称、蹲下取消、阴影、协议版本等），
+> 以 `behavior-spec.md` §9「与原版的有意差异」为准；第 11 章的 K1–K20 缺陷裁决见 `CHANGELOG.md` 1.3 段。
+
 > **文档性质**：对一个既有模组的逆向设计说明 + 可复刻规格。目标读者是「另一个 AI」或没有原始仓库的工程师：仅凭本文即可从零重建一份行为等价的模组。
 >
 > **被测对象**：`https://github.com/skyofsimba/HugMe.git`（fork），分支 `main`，HEAD = `e5fd1b3 "1.3"`。工作区唯一的本地改动是 `gradle/wrapper/gradle-wrapper.properties`（发行包地址换成了腾讯云镜像），与功能无关。
