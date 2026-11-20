@@ -77,7 +77,7 @@
 ### 从源码构建
 
 ```bash
-git clone <仓库地址>
+git clone https://github.com/skyofsimba/LetsCuddle.git
 cd LetsCuddle
 ./gradlew build          # Windows: gradlew.bat build
 # 产物：build/libs/letscuddle-<版本>.jar（已 reobf，可直接发布）
@@ -152,7 +152,7 @@ cd LetsCuddle
 ### Building
 
 ```bash
-git clone <repo>
+git clone https://github.com/skyofsimba/LetsCuddle.git
 cd LetsCuddle
 ./gradlew build          # Windows: gradlew.bat build
 # output: build/libs/letscuddle-<version>.jar (reobfuscated, ready to ship)
@@ -169,3 +169,4 @@ Development runs, two-client testing and the MixinGradle note for dev environmen
 - Code and assets in this repository are licensed under **MIT** — see [LICENSE](LetsCuddle/LICENSE)
 
 Author's homepage (Bilibili): <https://space.bilibili.com/350703330>
+
