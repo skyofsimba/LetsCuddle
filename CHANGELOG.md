@@ -2,6 +2,23 @@
 
 本项目的版本号跟随模组自身功能演进；Forge 1.20.1 为固定目标平台。
 
+## 1.6.0 — 2026-11-21
+
+**破坏性改名：`hug` → `cuddle`（抱抱 → 贴贴）**
+
+- 物品 id：`letscuddle:hug_ticket` → `letscuddle:cuddle_ticket`（旧物品会变成未知物品，需重新获取）
+- 语言键：`letscuddle.message.hug_*` → `cuddle_*`，`item.letscuddle.hug_ticket*` → `item.letscuddle.cuddle_ticket*`
+- 动作注册 id：`hug_normal_sender` 等 4 个 → `cuddle_normal_sender` 等（只改了 4 份动作 JSON 的 `name` 字段，
+  `torso`、`stopTick`、`version` 等数值一律未动）
+- Java 类：7 个 `HugXxx` → `CuddleXxx`（如 `HugTicketItem` → `CuddleTicketItem`）
+- 资源文件：`hug_ticket.png` / `hug_ticket.json` → `cuddle_ticket.png` / `cuddle_ticket.json`
+  （贴图、物品模型、配方、logo）
+- 模组描述：`Cuddle with other players using a cuddle ticket!`
+- 物品名「抱抱券」→「贴贴券」，中英文提示统一为「贴贴 / cuddle」
+
+**兼容性**：协议版本仍是 `3`，但物品 id 与动作 id 都变了，**客户端与服务端必须同时升级到 1.6.0**。
+下文 1.5.x 及更早记录中的「拥抱 / 抱抱」即现在的「贴贴」。
+
 ## 1.5.1 — 2026-11-21
 
 **修复**

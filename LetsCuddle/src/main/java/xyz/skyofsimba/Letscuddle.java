@@ -20,8 +20,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.slf4j.Logger;
-import xyz.skyofsimba.command.HugCommandHandler;
-import xyz.skyofsimba.item.HugTicketItem;
+import xyz.skyofsimba.command.CuddleCommandHandler;
+import xyz.skyofsimba.item.CuddleTicketItem;
 
 import java.io.File;
 
@@ -45,9 +45,9 @@ public class Letscuddle {
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
 
-    /** 抱抱券：64 上限堆叠，本体逻辑在 {@link HugTicketItem}。 */
-    public static final RegistryObject<Item> HUG_TICKET =
-            ITEMS.register("hug_ticket", () -> new HugTicketItem(new Item.Properties().stacksTo(64)));
+    /** 贴贴券：64 上限堆叠，本体逻辑在 {@link CuddleTicketItem}。 */
+    public static final RegistryObject<Item> CUDDLE_TICKET =
+            ITEMS.register("cuddle_ticket", () -> new CuddleTicketItem(new Item.Properties().stacksTo(64)));
 
     public Letscuddle() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -60,13 +60,13 @@ public class Letscuddle {
 
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
-            event.accept(HUG_TICKET);
+            event.accept(CUDDLE_TICKET);
         }
     }
 
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        HugCommandHandler.register(event.getDispatcher());
+        CuddleCommandHandler.register(event.getDispatcher());
     }
 
     /**
@@ -89,7 +89,7 @@ public class Letscuddle {
             return;
         }
 
-        ItemStack stack = new ItemStack(HUG_TICKET.get(), 16);
+        ItemStack stack = new ItemStack(CUDDLE_TICKET.get(), 16);
         if (!player.getInventory().add(stack)) {
             player.drop(stack, false);
         }

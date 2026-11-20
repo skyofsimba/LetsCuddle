@@ -1,6 +1,6 @@
 {
   "parent": "item/generated",
   "textures": {
-    "layer0": "letscuddle:item/hug_ticket"
+    "layer0": "letscuddle:item/cuddle_ticket"
   }
 }

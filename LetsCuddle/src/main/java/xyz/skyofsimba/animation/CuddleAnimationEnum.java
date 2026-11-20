@@ -4,21 +4,21 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 拥抱动作枚举。
+ * 贴贴动作枚举。
  *
  * <p>v1.5 起<b>不再把 ordinal 发到网络上</b>（K18）：每个动作有稳定的 {@link #id()}，
- * 请求随抱抱券的 NBT 一起提交，网络包里也传字符串 id。以后新增动作（例如 FLYHUG）
+ * 请求随贴贴券的 NBT 一起提交，网络包里也传字符串 id。以后新增动作（例如 FLYCUDDLE）
  * 只追加常量，不影响已发布的协议，也不再依赖枚举顺序。
  */
-public enum HugAnimationEnum {
+public enum CuddleAnimationEnum {
 
-    NORMALHUG("normal", "letscuddle.animation.normal"),
-    TOUCHHEADHUG("touch_head", "letscuddle.animation.touch_head");
+    NORMAL("normal", "letscuddle.animation.normal"),
+    TOUCH_HEAD("touch_head", "letscuddle.animation.touch_head");
 
     private final String id;
     private final String translationKey;
 
-    HugAnimationEnum(String id, String translationKey) {
+    CuddleAnimationEnum(String id, String translationKey) {
         this.id = id;
         this.translationKey = translationKey;
     }
@@ -35,9 +35,9 @@ public enum HugAnimationEnum {
 
     /** 按 id 查枚举；未知 id 返回 null（调用方决定退回哪个默认值）。 */
     @Nullable
-    public static HugAnimationEnum byId(@Nullable String id) {
+    public static CuddleAnimationEnum byId(@Nullable String id) {
         if (id != null) {
-            for (HugAnimationEnum value : values()) {
+            for (CuddleAnimationEnum value : values()) {
                 if (value.id.equals(id)) {
                     return value;
                 }

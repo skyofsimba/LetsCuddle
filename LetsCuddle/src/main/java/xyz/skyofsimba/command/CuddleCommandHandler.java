@@ -19,9 +19,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import xyz.skyofsimba.Letscuddle;
-import xyz.skyofsimba.animation.HugAnimationEnum;
-import xyz.skyofsimba.network.HugNetwork;
-import xyz.skyofsimba.network.HugRenderPayload;
+import xyz.skyofsimba.animation.CuddleAnimationEnum;
+import xyz.skyofsimba.network.CuddleNetwork;
+import xyz.skyofsimba.network.CuddleRenderPayload;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -39,18 +39,18 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>K3：「已接受」消息移到站位校验之后，站不住时只会收到「无法站立」；</li>
  *   <li>K5：两人 XZ 完全重合时落点返回 null，走「无法站立」分支而不是 NaN；</li>
  *   <li>K9：掉线立刻清理并广播结束包（客户端另有 200 tick 兜底）；</li>
- *   <li>K11：去掉恒真的 {@code active} 字段，结束/掉线统一走 {@link #broadcastHugEnd}；</li>
+ *   <li>K11：去掉恒真的 {@code active} 字段，结束/掉线统一走 {@link #broadcastCuddleEnd}；</li>
  *   <li>K13：校验请求的接收者确实是执行命令的人。</li>
  * </ul>
  *
  * <p>KEEP（明确不改）：落点方向（K4）、1.3 格间距、120 tick、60 秒、64 格广播、有序 Pair 键（K12）、状态不持久化（K17）。
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public final class HugCommandHandler {
+public final class CuddleCommandHandler {
 
     /** 请求 60 秒后过期。 */
     private static final long REQUEST_TIMEOUT_TICKS = 20L * 60L;
-    /** 拥抱锁定 6 秒。 */
+    /** 贴贴锁定 6 秒。 */
     private static final int ANIM_TICKS = 20 * 6;
     /** v1.4：蹲下提前结束需要按住这么多 tick（0.25 s），防误触。 */
     private static final int SNEAK_CANCEL_TICKS = 5;
@@ -59,10 +59,10 @@ public final class HugCommandHandler {
     private static final double STAND_OFFSET = 1.3D;
     private static final double STAND_HALF_WIDTH = 0.3D;
 
-    private static final Map<Pair<UUID, UUID>, HugRequest> REQUESTS = new ConcurrentHashMap<>();
-    private static final Map<Pair<UUID, UUID>, HugStatus> HUGS = new ConcurrentHashMap<>();
+    private static final Map<Pair<UUID, UUID>, CuddleRequest> REQUESTS = new ConcurrentHashMap<>();
+    private static final Map<Pair<UUID, UUID>, CuddleStatus> CUDDLES = new ConcurrentHashMap<>();
 
-    private HugCommandHandler() {}
+    private CuddleCommandHandler() {}
 
     // ------------------------------------------------------------------ 状态对象
 
@@ -72,19 +72,19 @@ public final class HugCommandHandler {
      * @param expireAt   过期时刻（服务端 tick 计数，PORT-FIX K1/K2）
      * @param animation  v1.5：发起者在券上选的动作，接受时按它播放（不再服务端随机）
      */
-    public record HugRequest(UUID senderId, UUID receiverId, long expireAt, HugAnimationEnum animation) {}
+    public record CuddleRequest(UUID senderId, UUID receiverId, long expireAt, CuddleAnimationEnum animation) {}
 
-    private static final class HugStatus {
+    private static final class CuddleStatus {
         final UUID senderId;
         final UUID receiverId;
         final Vec3 senderPos;
         final Vec3 receiverPos;
         final List<ServerPlayer> nearbyPlayers;
         int ticksRemaining;
-        /** v1.4：连续蹲下的 tick 数，达到 SNEAK_CANCEL_TICKS 立刻结束拥抱。 */
+        /** v1.4：连续蹲下的 tick 数，达到 SNEAK_CANCEL_TICKS 立刻结束贴贴。 */
         int sneakTicks;
 
-        HugStatus(UUID senderId, UUID receiverId, Vec3 senderPos, Vec3 receiverPos,
+        CuddleStatus(UUID senderId, UUID receiverId, Vec3 senderPos, Vec3 receiverPos,
                   int ticksRemaining, List<ServerPlayer> nearbyPlayers) {
             this.senderId = senderId;
             this.receiverId = receiverId;
@@ -109,7 +109,7 @@ public final class HugCommandHandler {
                                         ctx.getSource().sendFailure(red("letscuddle.message.sendernotfound"));
                                         return 0;
                                     }
-                                    handleHugAcceptance(sender, receiver);
+                                    handleCuddleAcceptance(sender, receiver);
                                     return 1;
                                 })))
                 .then(Commands.literal("rejectRequest")
@@ -122,14 +122,14 @@ public final class HugCommandHandler {
                                         ctx.getSource().sendFailure(red("letscuddle.message.sendernotfound"));
                                         return 0;
                                     }
-                                    handleHugRejection(sender, receiver);
+                                    handleCuddleRejection(sender, receiver);
                                     return 1;
                                 }))));
     }
 
     // ------------------------------------------------------------------ 发起 / 接受 / 拒绝
 
-    public static boolean startHugRequest(ServerPlayer sender, ServerPlayer receiver, HugAnimationEnum animation) {
+    public static boolean startCuddleRequest(ServerPlayer sender, ServerPlayer receiver, CuddleAnimationEnum animation) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return false;
@@ -140,22 +140,22 @@ public final class HugCommandHandler {
             sender.sendSystemMessage(red("letscuddle.message.have_request"));
             return false;
         }
-        REQUESTS.put(key, new HugRequest(sender.getUUID(), receiver.getUUID(),
+        REQUESTS.put(key, new CuddleRequest(sender.getUUID(), receiver.getUUID(),
                 server.getTickCount() + REQUEST_TIMEOUT_TICKS, animation));
         return true;
     }
 
-    private static void handleHugAcceptance(ServerPlayer sender, ServerPlayer receiver) {
+    private static void handleCuddleAcceptance(ServerPlayer sender, ServerPlayer receiver) {
         Pair<UUID, UUID> key = key(sender, receiver);
-        HugRequest request = REQUESTS.get(key);
+        CuddleRequest request = REQUESTS.get(key);
 
         if (request == null || !request.receiverId().equals(receiver.getUUID())) {   // PORT-FIX K13
             receiver.sendSystemMessage(red("letscuddle.message.invalid_request"));
             return;
         }
-        if (HUGS.containsKey(key)) {
-            sender.sendSystemMessage(red2("letscuddle.message.hug_in_progress_sender", receiver));
-            receiver.sendSystemMessage(red2("letscuddle.message.hug_in_progress_receiver", sender));
+        if (CUDDLES.containsKey(key)) {
+            sender.sendSystemMessage(red2("letscuddle.message.cuddle_in_progress_sender", receiver));
+            receiver.sendSystemMessage(red2("letscuddle.message.cuddle_in_progress_receiver", sender));
             return;
         }
         if (sender.level() != receiver.level()) {
@@ -181,17 +181,17 @@ public final class HugCommandHandler {
         receiver.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(sender.getX(), sender.getEyeY(), sender.getZ()));
         // v1.5.1：发起者也转向接受者。原实现只让接受者转头，发起者的第三人称镜头
-        // 还朝着旧方向，而接受者被摆到了「发起者身后」，自动切第三人称后整段拥抱会跑到画面外。
+        // 还朝着旧方向，而接受者被摆到了「发起者身后」，自动切第三人称后整段贴贴会跑到画面外。
         sender.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(receiver.getX(), receiver.getEyeY(), receiver.getZ()));
 
-        broadcastHugStart(sender, receiver, request.animation());
+        broadcastCuddleStart(sender, receiver, request.animation());
         REQUESTS.remove(key);
     }
 
-    private static void handleHugRejection(ServerPlayer sender, ServerPlayer receiver) {
+    private static void handleCuddleRejection(ServerPlayer sender, ServerPlayer receiver) {
         Pair<UUID, UUID> key = key(sender, receiver);
-        HugRequest request = REQUESTS.get(key);
+        CuddleRequest request = REQUESTS.get(key);
 
         if (request != null && request.receiverId().equals(receiver.getUUID())) {
             sender.sendSystemMessage(red2("letscuddle.message.sender_rejected", receiver));
@@ -242,18 +242,18 @@ public final class HugCommandHandler {
 
     // ------------------------------------------------------------------ 广播与状态
 
-    private static void broadcastHugStart(ServerPlayer sender, ServerPlayer receiver, HugAnimationEnum animation) {
+    private static void broadcastCuddleStart(ServerPlayer sender, ServerPlayer receiver, CuddleAnimationEnum animation) {
         List<ServerPlayer> nearby = getNearbyPlayers(sender);
-        HUGS.put(key(sender, receiver), new HugStatus(
+        CUDDLES.put(key(sender, receiver), new CuddleStatus(
                 sender.getUUID(), receiver.getUUID(),
                 sender.position(), receiver.position(),
                 ANIM_TICKS, nearby));
 
         // v1.5：动作由发起者决定（券上 NBT），整批接收者拿同一个 id
-        HugRenderPayload payload = new HugRenderPayload(
+        CuddleRenderPayload payload = new CuddleRenderPayload(
                 sender.getUUID().toString(), receiver.getUUID().toString(), false, false, animation.id());
         for (ServerPlayer player : nearby) {
-            HugNetwork.sendTo(player, payload);
+            CuddleNetwork.sendTo(player, payload);
         }
     }
 
@@ -261,14 +261,14 @@ public final class HugCommandHandler {
      * @param cancelled v1.4：true 表示被蹲下提前取消，客户端要立即收掉动作；
      *                  正常结束/掉线解锁传 false（动作自然播完）
      */
-    private static void broadcastHugEnd(HugStatus status, boolean cancelled) {
-        HugRenderPayload payload = new HugRenderPayload(
+    private static void broadcastCuddleEnd(CuddleStatus status, boolean cancelled) {
+        CuddleRenderPayload payload = new CuddleRenderPayload(
                 status.senderId.toString(), status.receiverId.toString(), true, cancelled, "");
         for (ServerPlayer player : status.nearbyPlayers) {
             if (player == null || player.hasDisconnected()) {
                 continue;
             }
-            HugNetwork.sendTo(player, payload);
+            CuddleNetwork.sendTo(player, payload);
         }
     }
 
@@ -304,7 +304,7 @@ public final class HugCommandHandler {
         }
 
         expireRequests(server);
-        tickHugs(server);
+        tickCuddles(server);
     }
 
     /** PORT-FIX K1/K2：过期扫描搬到主线程 tick，替换原来的 60 秒调度线程。 */
@@ -313,9 +313,9 @@ public final class HugCommandHandler {
             return;
         }
         long now = server.getTickCount();
-        Iterator<Map.Entry<Pair<UUID, UUID>, HugRequest>> it = REQUESTS.entrySet().iterator();
+        Iterator<Map.Entry<Pair<UUID, UUID>, CuddleRequest>> it = REQUESTS.entrySet().iterator();
         while (it.hasNext()) {
-            HugRequest request = it.next().getValue();
+            CuddleRequest request = it.next().getValue();
             if (now < request.expireAt()) {
                 continue;
             }
@@ -332,19 +332,19 @@ public final class HugCommandHandler {
     }
 
     /** 每 tick 把两人拉回原位（不能走动、不能被打飞），并递减锁定计数。 */
-    private static void tickHugs(MinecraftServer server) {
-        if (HUGS.isEmpty()) {
+    private static void tickCuddles(MinecraftServer server) {
+        if (CUDDLES.isEmpty()) {
             return;
         }
-        Iterator<Map.Entry<Pair<UUID, UUID>, HugStatus>> it = HUGS.entrySet().iterator();
+        Iterator<Map.Entry<Pair<UUID, UUID>, CuddleStatus>> it = CUDDLES.entrySet().iterator();
         while (it.hasNext()) {
-            HugStatus status = it.next().getValue();
+            CuddleStatus status = it.next().getValue();
             ServerPlayer sender = server.getPlayerList().getPlayer(status.senderId);
             ServerPlayer receiver = server.getPlayerList().getPlayer(status.receiverId);
 
             if (sender == null || receiver == null) {          // PORT-FIX K9
                 it.remove();
-                broadcastHugEnd(status, true);                  // 让旁观者解锁，并收掉动作
+                broadcastCuddleEnd(status, true);                  // 让旁观者解锁，并收掉动作
                 continue;
             }
 
@@ -355,8 +355,8 @@ public final class HugCommandHandler {
             if (sender.isShiftKeyDown() || receiver.isShiftKeyDown()) {
                 if (++status.sneakTicks >= SNEAK_CANCEL_TICKS) {
                     it.remove();
-                    broadcastHugEnd(status, true);
-                    Component message = Component.translatable("letscuddle.message.hug_cancelled")
+                    broadcastCuddleEnd(status, true);
+                    Component message = Component.translatable("letscuddle.message.cuddle_cancelled")
                             .withStyle(ChatFormatting.YELLOW);
                     sender.sendSystemMessage(message);
                     receiver.sendSystemMessage(message);
@@ -368,7 +368,7 @@ public final class HugCommandHandler {
 
             if (--status.ticksRemaining <= 0) {
                 it.remove();
-                broadcastHugEnd(status, false);
+                broadcastCuddleEnd(status, false);
             }
         }
     }
@@ -381,7 +381,7 @@ public final class HugCommandHandler {
         }
         UUID id = player.getUUID();
 
-        Iterator<Map.Entry<Pair<UUID, UUID>, HugRequest>> requests = REQUESTS.entrySet().iterator();
+        Iterator<Map.Entry<Pair<UUID, UUID>, CuddleRequest>> requests = REQUESTS.entrySet().iterator();
         while (requests.hasNext()) {
             Pair<UUID, UUID> key = requests.next().getKey();
             if (key.getFirst().equals(id) || key.getSecond().equals(id)) {
@@ -389,14 +389,14 @@ public final class HugCommandHandler {
             }
         }
 
-        Iterator<Map.Entry<Pair<UUID, UUID>, HugStatus>> hugs = HUGS.entrySet().iterator();
-        while (hugs.hasNext()) {
-            HugStatus status = hugs.next().getValue();
+        Iterator<Map.Entry<Pair<UUID, UUID>, CuddleStatus>> cuddles = CUDDLES.entrySet().iterator();
+        while (cuddles.hasNext()) {
+            CuddleStatus status = cuddles.next().getValue();
             if (!status.senderId.equals(id) && !status.receiverId.equals(id)) {
                 continue;
             }
-            hugs.remove();
-            broadcastHugEnd(status, true);
+            cuddles.remove();
+            broadcastCuddleEnd(status, true);
         }
     }
 

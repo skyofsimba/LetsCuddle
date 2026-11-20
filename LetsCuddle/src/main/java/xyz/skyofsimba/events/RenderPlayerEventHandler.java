@@ -25,7 +25,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 import xyz.skyofsimba.Letscuddle;
-import xyz.skyofsimba.client.HugCameraHandler;
+import xyz.skyofsimba.client.CuddleCameraHandler;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 渲染接管：拥抱期间取消原版玩家渲染，自己摆好「面对面」的模型再画一遍。
+ * 渲染接管：贴贴期间取消原版玩家渲染，自己摆好「面对面」的模型再画一遍。
  *
  * <p>公式一个符号都不能改（original-design 7.8.3 有完整推导）：
  * <pre>
@@ -49,7 +49,7 @@ import java.util.UUID;
  *
  * <p>取消 {@code RenderPlayerEvent.Pre} 会跳过整条 {@code PlayerRenderer#render}，
  * 其中包含 playerAnimator 在 {@code setupRotations} 里做的 body 根节点变换，
- * 所以那 5 行必须由本类补上（否则 {@code hug_normal_receiver} 的 {@code torso.z = -1.0} 不会生效，两人之间会空出 1 格）。
+ * 所以那 5 行必须由本类补上（否则 {@code cuddle_normal_receiver} 的 {@code torso.z = -1.0} 不会生效，两人之间会空出 1 格）。
  *
  * <p>v1.4 追加：
  * <ul>
@@ -97,7 +97,7 @@ public final class RenderPlayerEventHandler {
         if (client.level.getGameTime() > lock.expireAt()) {   // 兜底超时
             LOCKS.remove(player.getUUID());
             if (isLocalPlayer(player)) {
-                HugCameraHandler.onHugEnd();
+                CuddleCameraHandler.onCuddleEnd();
             }
             restoreHead(event.getRenderer(), player);
             return;
@@ -230,7 +230,7 @@ public final class RenderPlayerEventHandler {
      * </pre>
      * 例：接受者在 (1.3,0,0)、面向 −X（θ=90°）、body.z=−1 → 位移 (−1,0,0)，模型落在 (0.3,0,0)，正确。
      *
-     * @return 未在拥抱中 / 动作未激活时返回 {@link Vec3#ZERO}
+     * @return 未在贴贴中 / 动作未激活时返回 {@link Vec3#ZERO}
      */
     public static Vec3 modelOffset(AbstractClientPlayer player, float partialTick) {
         Minecraft client = Minecraft.getInstance();
@@ -261,7 +261,7 @@ public final class RenderPlayerEventHandler {
         return new Vec3(dx, 0.0D, dz);
     }
 
-    /** 该玩家当前是否处于拥抱锁定状态（镜头事件用）。 */
+    /** 该玩家当前是否处于贴贴锁定状态（镜头事件用）。 */
     public static boolean isLocked(AbstractClientPlayer player) {
         return LOCKS.containsKey(player.getUUID());
     }
@@ -273,7 +273,7 @@ public final class RenderPlayerEventHandler {
         LOCKS.put(receiver.getUUID(), new Lock(sender.getUUID(), false, until));
 
         if (isLocalPlayer(sender) || isLocalPlayer(receiver)) {
-            HugCameraHandler.onHugStart();                  // v1.4：当事人自动切第三人称
+            CuddleCameraHandler.onCuddleStart();                  // v1.4：当事人自动切第三人称
         }
     }
 
@@ -284,7 +284,7 @@ public final class RenderPlayerEventHandler {
         // 阴影在本帧 AFTER_ENTITIES 恢复，提前清掉会漏还原。
 
         if (isLocalPlayer(sender) || isLocalPlayer(receiver)) {
-            HugCameraHandler.onHugEnd();
+            CuddleCameraHandler.onCuddleEnd();
         }
     }
 }

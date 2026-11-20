@@ -3,10 +3,12 @@
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-62b47a?style=flat-square)
 ![Forge](https://img.shields.io/badge/Forge-47.4.29-e6883a?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-3b82f6?style=flat-square)
-![playerAnimator](https://img.shields.io/badge/requires-playerAnimator-8b5cf6?style=flat-square)
 
 玩家之间可以相互贴贴。 
-Players can hug cuddle with other.
+Players can cuddle with each other.
+
+你需要安装 [PlayerAnimator 模组](https://modrinth.com/mod/playeranimator) 作为前置！
+You need [PlayerAnimator Mod](https://modrinth.com/mod/playeranimator) installed to use this mod!
 
 > English version below · [中文](#中文) | [English](#english)
 
@@ -27,9 +29,9 @@ cd LetsCuddle
 
 ### 玩法
 
-1. 手持抱抱券，shift + 右键可以切换拥抱动作。
-2. 手持抱抱券，直接右键其它玩家。
-3. 其他玩家在聊天框中同意请求后二人拥抱。
+1. 手持贴贴券，shift + 右键可以切换贴贴动作。
+2. 手持贴贴券，直接右键其它玩家。
+3. 其他玩家在聊天框中同意请求后二人贴贴。
 
 命令：
 
@@ -65,8 +67,8 @@ Requires JDK 17.
 
 ### Usage
 
-1. Holding a hug ticket, you can switch between hugging actions by pressing shift + right-click.
-2. Hold the hug ticket and right-click on other players.
+1. Holding a cuddle ticket, you can switch between cuddle animations by pressing shift + right-click.
+2. Hold the cuddle ticket and right-click on other players.
 3. After the other player agrees to the request in the chat box, the two embrace.
 
 Commands:

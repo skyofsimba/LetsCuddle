@@ -26,7 +26,7 @@ import xyz.skyofsimba.Letscuddle;
  * <ol>
  *   <li>层 id 与优先级不变（优先级 42 高于主层，保证动作能覆盖）；</li>
  *   <li>{@link SpeedModifier} 0.5F —— 动作文件 61 tick，降速后约 122 tick ≈ 6.1 秒，刚好比服务端 120 tick 锁定略长；</li>
- *   <li>动作 id 四个：{@code hug_normal_sender/receiver}、{@code hug_touch_sender/receiver}（命名空间跟随 modid）。</li>
+ *   <li>动作 id 四个：{@code cuddle_normal_sender/receiver}、{@code cuddle_touch_sender/receiver}（命名空间跟随 modid）。</li>
  * </ol>
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -52,8 +52,8 @@ public final class AnimationManager {
      * 给两名玩家各自的动画层挂上互补的动作。
      * <p>PORT-FIX K19：动作数据缺失时打日志放弃播放，不再对 null 构造 KeyframeAnimationPlayer。
      */
-    public static void playHugAnimation(AbstractClientPlayer sender, AbstractClientPlayer receiver,
-                                        HugAnimationEnum kind) {
+    public static void playCuddleAnimation(AbstractClientPlayer sender, AbstractClientPlayer receiver,
+                                        CuddleAnimationEnum kind) {
         ModifierLayer<IAnimation> senderLayer = layerOf(sender);
         ModifierLayer<IAnimation> receiverLayer = layerOf(receiver);
         if (senderLayer == null || receiverLayer == null) {
@@ -73,10 +73,10 @@ public final class AnimationManager {
     }
 
     /**
-     * 提前结束（蹲下取消）：立刻收掉动作层上的动画，避免玩家带着拥抱姿势走开。
+     * 提前结束（蹲下取消）：立刻收掉动作层上的动画，避免玩家带着贴贴姿势走开。
      * <p>正常结束不调用这里 —— 原设计让动作自然播完（122 tick 略长于 120 tick 锁定）。
      */
-    public static void stopHugAnimation(AbstractClientPlayer sender, AbstractClientPlayer receiver) {
+    public static void stopCuddleAnimation(AbstractClientPlayer sender, AbstractClientPlayer receiver) {
         ModifierLayer<IAnimation> senderLayer = layerOf(sender);
         if (senderLayer != null) {
             senderLayer.setAnimation(null);
@@ -96,10 +96,10 @@ public final class AnimationManager {
 
     /** 1.20 线的 {@code getAnimation} 直接返回 {@code @Nullable KeyframeAnimation}，无需强转。 */
     @Nullable
-    private static KeyframeAnimation lookup(HugAnimationEnum kind, boolean sender) {
+    private static KeyframeAnimation lookup(CuddleAnimationEnum kind, boolean sender) {
         String path = switch (kind) {
-            case TOUCHHEADHUG -> sender ? "hug_touch_sender" : "hug_touch_receiver";
-            default -> sender ? "hug_normal_sender" : "hug_normal_receiver";
+            case TOUCH_HEAD -> sender ? "cuddle_touch_sender" : "cuddle_touch_receiver";
+            default -> sender ? "cuddle_normal_sender" : "cuddle_normal_receiver";
         };
         return PlayerAnimationRegistry.getAnimation(new ResourceLocation(Letscuddle.MODID, path));
     }

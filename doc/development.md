@@ -10,20 +10,20 @@
 | JDK / Gradle | 17 / 8.8（用仓库自带的 wrapper） |
 | 映射 | official 1.20.1 |
 | 动画库 | playerAnimator `1.0.2-rc1+1.20`（modid `playeranimator`，**仅客户端**需要） |
-| 协议版本 | `HugNetwork.PROTOCOL`，当前 `3`；改动 payload 必须 +1 |
+| 协议版本 | `CuddleNetwork.PROTOCOL`，当前 `3`；改动 payload 必须 +1 |
 
 ## 代码结构
 
-| 类 | 职责 |
-|---|---|
-| `Letscuddle` | 入口：注册物品、创造栏、命令注册、首登发券 |
-| `command/HugCommandHandler` | 服务端状态机：请求 / 接受 / 拒绝 / 每 tick 锁定 / 过期 / 蹲下取消 |
-| `item/HugTicketItem` | 抱抱券：发起请求、Shift 切换动作、tooltip |
-| `network/HugNetwork` + `HugRenderPayload` | 通道与 S2C 状态包（字段顺序固定） |
-| `network/HugRenderClientHandler` | 收包后加锁 / 解锁 / 播动作（仅客户端） |
-| `animation/AnimationManager` + `HugAnimationEnum` | 动作层注册与播放（优先级 42、速度 ×0.5） |
-| `events/RenderPlayerEventHandler` | 取消原版渲染、自绘模型、阴影与头部处理 |
-| `client/HugCameraHandler` | 第三人称切换、镜头偏移 |
+| 类                                                    | 职责                                          |
+| ---------------------------------------------------- | ------------------------------------------- |
+| `Letscuddle`                                         | 入口：注册物品、创造栏、命令注册、首登发券                       |
+| `command/CuddleCommandHandler`                       | 服务端状态机：请求 / 接受 / 拒绝 / 每 tick 锁定 / 过期 / 蹲下取消 |
+| `item/CuddleTicketItem`                              | 贴贴券：发起请求、Shift 切换动作、tooltip                 |
+| `network/CuddleNetwork` + `CuddleRenderPayload`      | 通道与 S2C 状态包（字段顺序固定）                         |
+| `network/CuddleRenderClientHandler`                  | 收包后加锁 / 解锁 / 播动作（仅客户端）                      |
+| `animation/AnimationManager` + `CuddleAnimationEnum` | 动作层注册与播放（优先级 42、速度 ×0.5）                    |
+| `events/RenderPlayerEventHandler`                    | 取消原版渲染、自绘模型、阴影与头部处理                         |
+| `client/CuddleCameraHandler`                         | 第三人称切换、镜头偏移                                 |
 
 ## 构建与运行
 

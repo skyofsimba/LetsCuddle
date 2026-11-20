@@ -15,13 +15,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
-import xyz.skyofsimba.animation.HugAnimationEnum;
-import xyz.skyofsimba.command.HugCommandHandler;
+import xyz.skyofsimba.animation.CuddleAnimationEnum;
+import xyz.skyofsimba.command.CuddleCommandHandler;
 
 import java.util.List;
 
 /**
- * 抱抱券：右键另一名玩家发起拥抱请求。
+ * 贴贴券：右键另一名玩家发起贴贴请求。
  *
  * <p>行为与原实现一致（KEEP K16：发起失败也返回 sidedSuccess，客户端照常播挥手动画）：
  * 服务端登记请求、立刻扣 1 张券、给对方发带 [同意]/[拒绝] 点击按钮的复合消息。
@@ -30,26 +30,26 @@ import java.util.List;
  * {@code Shift + 右键}（空中或玩家身上都行）循环切换，服务端改 NBT 后自动同步给客户端，
  * 所以不需要额外的 C2S 包；发起请求时服务端直接读手上的券。
  */
-public class HugTicketItem extends Item {
+public class CuddleTicketItem extends Item {
 
     /** 物品 NBT 里记录动作 id 的键。 */
     private static final String ANIMATION_TAG = "Animation";
 
-    public HugTicketItem(Properties properties) {
+    public CuddleTicketItem(Properties properties) {
         super(properties);
     }
 
     /** 读取券上选中的动作；没有 NBT（老券、创造栏刚拿的）时返回默认动作。 */
-    public static HugAnimationEnum getSelectedAnimation(ItemStack stack) {
+    public static CuddleAnimationEnum getSelectedAnimation(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        HugAnimationEnum animation = tag == null ? null : HugAnimationEnum.byId(tag.getString(ANIMATION_TAG));
-        return animation != null ? animation : HugAnimationEnum.NORMALHUG;
+        CuddleAnimationEnum animation = tag == null ? null : CuddleAnimationEnum.byId(tag.getString(ANIMATION_TAG));
+        return animation != null ? animation : CuddleAnimationEnum.NORMAL;
     }
 
     /** 循环切到下一个动作并写回 NBT（**只能在服务端调用**，否则客户端本地改动不会同步）。 */
-    private static HugAnimationEnum cycleSelectedAnimation(ItemStack stack) {
-        HugAnimationEnum[] values = HugAnimationEnum.values();
-        HugAnimationEnum next = values[(getSelectedAnimation(stack).ordinal() + 1) % values.length];
+    private static CuddleAnimationEnum cycleSelectedAnimation(ItemStack stack) {
+        CuddleAnimationEnum[] values = CuddleAnimationEnum.values();
+        CuddleAnimationEnum next = values[(getSelectedAnimation(stack).ordinal() + 1) % values.length];
         stack.getOrCreateTag().putString(ANIMATION_TAG, next.id());
         return next;
     }
@@ -74,7 +74,7 @@ public class HugTicketItem extends Item {
             return InteractionResult.PASS;
         }
 
-        // Shift + 右键玩家：只切换动作，不发请求（避免误触发起拥抱）
+        // Shift + 右键玩家：只切换动作，不发请求（避免误触发起贴贴）
         if (player.isShiftKeyDown()) {
             if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
                 notifySelection(serverPlayer, cycleSelectedAnimation(stack));
@@ -85,9 +85,9 @@ public class HugTicketItem extends Item {
         if (!player.level().isClientSide
                 && player instanceof ServerPlayer serverPlayer
                 && targetPlayer instanceof ServerPlayer serverTarget) {
-            HugAnimationEnum animation = getSelectedAnimation(stack);
-            if (HugCommandHandler.startHugRequest(serverPlayer, serverTarget, animation)) {
-                sendHugRequest(player, targetPlayer, animation);
+            CuddleAnimationEnum animation = getSelectedAnimation(stack);
+            if (CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, animation)) {
+                sendCuddleRequest(player, targetPlayer, animation);
                 player.sendSystemMessage(Component
                         .translatable("letscuddle.message.sendsuccess",
                                 targetPlayer.getName().getString(), animation.displayName())
@@ -100,12 +100,12 @@ public class HugTicketItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("item.letscuddle.hug_ticket.desc").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.letscuddle.hug_ticket.animation",
+        tooltip.add(Component.translatable("item.letscuddle.cuddle_ticket.desc").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("item.letscuddle.cuddle_ticket.animation",
                 getSelectedAnimation(stack).displayName()).withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    private static void notifySelection(ServerPlayer player, HugAnimationEnum animation) {
+    private static void notifySelection(ServerPlayer player, CuddleAnimationEnum animation) {
         player.displayClientMessage(
                 Component.translatable("letscuddle.message.animation_selected", animation.displayName())
                         .withStyle(ChatFormatting.AQUA),
@@ -116,7 +116,7 @@ public class HugTicketItem extends Item {
      * 请求消息：蓝字提示 + 绿色 [同意] + 红色 [拒绝]。
      * 按钮只发原版 {@code ClickEvent(RUN_COMMAND)}，零额外协议（原设计 3.2）。
      */
-    private void sendHugRequest(Player sender, Player target, HugAnimationEnum animation) {
+    private void sendCuddleRequest(Player sender, Player target, CuddleAnimationEnum animation) {
         String senderName = sender.getName().getString();
         Component message = Component
                 .translatable("letscuddle.message.sendrequest", sender.getName(), animation.displayName())

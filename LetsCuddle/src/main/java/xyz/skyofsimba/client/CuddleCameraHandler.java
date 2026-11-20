@@ -14,25 +14,25 @@ import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.events.RenderPlayerEventHandler;
 
 /**
- * 拥抱期间的第三人称切换（仅客户端、仅当事人）。
+ * 贴贴期间的第三人称切换（仅客户端、仅当事人）。
  *
  * <p>规则（v1.4 定稿）：
  * <ul>
  *   <li>开始：记住进入前的视角，切到 {@link CameraType#THIRD_PERSON_BACK}；</li>
  *   <li>结束：只有当视角仍停留在我们切过去的 {@code THIRD_PERSON_BACK} 时才恢复原视角 ——
- *       玩家在拥抱期间自己按 F5 换过视角的，一律尊重玩家的选择，不覆盖。</li>
+ *       玩家在贴贴期间自己按 F5 换过视角的，一律尊重玩家的选择，不覆盖。</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public final class HugCameraHandler {
+public final class CuddleCameraHandler {
 
     private static boolean active = false;
     private static CameraType previous = CameraType.FIRST_PERSON;
 
-    private HugCameraHandler() {}
+    private CuddleCameraHandler() {}
 
-    /** 本地玩家（发起者或接受者）开始拥抱。 */
-    public static void onHugStart() {
+    /** 本地玩家（发起者或接受者）开始贴贴。 */
+    public static void onCuddleStart() {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.options == null) {
             return;
@@ -44,8 +44,8 @@ public final class HugCameraHandler {
         client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
     }
 
-    /** 本地玩家所在的拥抱结束（正常结束、蹲下取消、掉线、客户端兜底超时都走这里）。 */
-    public static void onHugEnd() {
+    /** 本地玩家所在的贴贴结束（正常结束、蹲下取消、掉线、客户端兜底超时都走这里）。 */
+    public static void onCuddleEnd() {
         if (!active) {
             return;
         }
@@ -70,7 +70,7 @@ public final class HugCameraHandler {
      * v1.5.1：第三人称镜头跟随「渲染模型的实际位置」。
      *
      * <p>原版第三人称相机绕实体坐标旋转（{@code Camera#setup} 里算好位置），
-     * 而拥抱动画的 {@code body} 位移把渲染模型推开了约 1 格，于是画面中心是空地、抱抱偏在一边。
+     * 而贴贴动画的 {@code body} 位移把渲染模型推开了约 1 格，于是画面中心是空地、贴贴偏在一边。
      * 本事件在 {@code Camera#setup} 之后、{@code LevelRenderer#renderLevel} 之前触发，
      * 此时改相机位置会直接作用于这一帧（AT 把 {@code Camera#setPosition(Vec3)} 开成了 public）。
      *
