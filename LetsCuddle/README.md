@@ -61,4 +61,13 @@ gradlew.bat build
 **本次身份调整**（相对 `port-plan.md`）：modid/包名/命名空间改为 `letscuddle`、`xyz.skyofsimba`，
 命令改为 `/letscuddle`，资源目录相应从 `assets/hugme` 迁到 `assets/letscuddle`（动作 JSON、贴图字节未变）。
 
-**移除**：MDK 模板自带的 MixinGradle 脚手架（本模组不含 mixin，playerAnimator 自带自己的 mixin 配置）。
+## 开发环境注意
+
+本模组自身**不含 mixin**，但 `build.gradle` 仍保留了 MixinGradle 插件（`apply plugin: 'org.spongepowered.mixin'`）：
+它的作用不是给我们生成 mixin，而是给 `runClient` / `runServer` 注入
+`-Dmixin.env.remapRefMap=true` 与 `-Dmixin.env.refMapRemappingFile=build/createSrgToMcp/output.srg`。
+少了这两项，开发环境里 **playerAnimator 自带的 mixin** 会因为 refmap 还是 SRG 名（`m_8119_`）而注入失败，
+客户端启动直接崩在 `PlayerEntityMixin`。生产环境（正式 jar）不需要这两个属性。
+
+> 因为模组没有自己的 mixin，`mixin {}` 配置块与 `letscuddle.mixins.json` 都已删除 —— 打包产物里没有
+> `MixinConfigs` 清单项，也不会再出现「refmap 读不到」的开发期警告。
