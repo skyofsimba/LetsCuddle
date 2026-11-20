@@ -5,14 +5,9 @@
 ![License](https://img.shields.io/badge/License-MIT-3b82f6?style=flat-square)
 ![playerAnimator](https://img.shields.io/badge/requires-playerAnimator-8b5cf6?style=flat-square)
 
-一件消耗品「抱抱券」：右键另一名玩家发起拥抱请求，对方点 `[同意]` 后两人被摆成面对面、原地抱 6 秒，
-周围 64 格的玩家都能看到动作。纯表现型社交模组，没有伤害、没有 buff。
+加入一件消耗品「抱抱券」：右键另一名玩家发起拥抱请求，对方 `[同意]` 后两人拥抱，周围 64 格的玩家都能看到。
 
 > English version below · [中文](#中文) | [English](#english)
-
-<!-- 截图 / GIF 占位：把文件放到 doc/images/ 下，然后取消下面两行注释 -->
-<!-- ![demo](doc/images/hug-demo.gif) -->
-<!-- ![crafting](doc/images/recipe.png) -->
 
 ---
 
@@ -92,7 +87,7 @@ cd LetsCuddle
 - 原版模组 **HugMe**：TuYw（[TunYuntuwuQWQ](https://github.com/TunYuntuwuQWQ)），MIT
 - 动作库 **playerAnimator**：[KosmX](https://github.com/KosmX)，MIT
 - 1.20.1 Forge 移植：小狮子辛巴 / skyofsimba
-- 本仓库代码与资源以 **MIT** 发布，版权声明见 [LICENSE](LetsCuddle/LICENSE)
+- 本仓库代码与资源以 **MIT** 发布，版权声明见 [LICENSE](LICENSE)
 
 作者主页（B 站）：<https://space.bilibili.com/350703330>
 
@@ -168,7 +163,7 @@ Development runs, two-client testing and the MixinGradle note for dev environmen
 - Original mod **HugMe** by TuYw ([TunYuntuwuQWQ](https://github.com/TunYuntuwuQWQ)), MIT
 - **playerAnimator** by [KosmX](https://github.com/KosmX), MIT
 - 1.20.1 Forge port by 小狮子辛巴 / skyofsimba
-- Code and assets in this repository are licensed under **MIT** — see [LICENSE](LetsCuddle/LICENSE)
+- Code and assets in this repository are licensed under **MIT** — see [LICENSE](LICENSE)
 
 Author's homepage (Bilibili): <https://space.bilibili.com/350703330>
 

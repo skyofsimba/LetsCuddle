@@ -1,3 +1,6 @@
+# 本文件是整个仓库唯一的 .gitignore（子目录里不再放第二份）。
+# 规则里不带前导斜杠的路径（如 build/、.gradle/）会匹配任意层级。
+
 # ---- Gradle / 构建产物 ----
 .gradle/
 build/
@@ -11,10 +14,15 @@ replay_pid*
 
 # ---- IntelliJ IDEA ----
 .idea/
+.idea_modules/
 *.iml
 *.ipr
 *.iws
 out/
+
+# ---- Obsidian 笔记库（根目录就是 vault）----
+.obsidian/
+.trash/
 
 # ---- 系统杂项 ----
 .DS_Store
