@@ -16,15 +16,20 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 import xyz.skyofsimba.Letscuddle;
+import xyz.skyofsimba.client.HugCameraHandler;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +49,14 @@ import java.util.UUID;
  * <p>取消 {@code RenderPlayerEvent.Pre} 会跳过整条 {@code PlayerRenderer#render}，
  * 其中包含 playerAnimator 在 {@code setupRotations} 里做的 body 根节点变换，
  * 所以那 5 行必须由本类补上（否则 {@code hug_normal_receiver} 的 {@code torso.z = -1.0} 不会生效，两人之间会空出 1 格）。
+ *
+ * <p>v1.4 追加：
+ * <ul>
+ *   <li><b>阴影</b>：1.20.1 的阴影由 {@code EntityRenderDispatcher} 在渲染器返回后按<b>实体坐标</b>单独绘制，
+ *       不跟随我们在 PoseStack 里的位移。这里在渲染前把当事人临时置为 invisible（阴影的绘制条件含 {@code !isInvisible()}），
+ *       在 {@code AFTER_ENTITIES} 阶段立刻恢复 —— 只影响这一帧，不会让无模组客户端看到人消失。</li>
+ *   <li><b>K10</b>：记录我们隐藏过谁的头，解锁后恢复。</li>
+ * </ul>
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class RenderPlayerEventHandler {
@@ -52,6 +65,12 @@ public final class RenderPlayerEventHandler {
     private static final long LOCK_TIMEOUT_TICKS = 200L;
 
     private static final Map<UUID, Lock> LOCKS = new HashMap<>();
+
+    /** 本帧被我们临时置为 invisible 的玩家（用于隐藏阴影），AFTER_ENTITIES 时恢复。 */
+    private static final Set<UUID> SHADOW_HIDDEN = new HashSet<>();
+
+    /** 被我们隐藏过头的玩家（K10），解锁后需要恢复 visible。 */
+    private static final Set<UUID> HEAD_HIDDEN = new HashSet<>();
 
     private RenderPlayerEventHandler() {}
 
@@ -65,6 +84,7 @@ public final class RenderPlayerEventHandler {
         }
         Lock lock = LOCKS.get(player.getUUID());
         if (lock == null) {
+            restoreHead(event.getRenderer(), player);      // K10：解锁后把头放回来
             return;
         }
 
@@ -73,14 +93,20 @@ public final class RenderPlayerEventHandler {
             LOCKS.remove(player.getUUID());
             return;
         }
-        if (client.level.getGameTime() > lock.expireAt()) {
+        if (client.level.getGameTime() > lock.expireAt()) {   // 兜底超时
             LOCKS.remove(player.getUUID());
+            if (isLocalPlayer(player)) {
+                HugCameraHandler.onHugEnd();
+            }
+            restoreHead(event.getRenderer(), player);
             return;
         }
         Player partnerEntity = client.level.getPlayerByUUID(lock.partner());
         if (!(partnerEntity instanceof AbstractClientPlayer partner)) {
             return;
         }
+
+        hideShadowForThisFrame(player);
 
         PoseStack poseStack = event.getPoseStack();
         float targetYaw = calculateYawToTarget(player, partner);
@@ -110,14 +136,61 @@ public final class RenderPlayerEventHandler {
         event.setCanceled(true);
     }
 
+    /**
+     * 阴影纠偏：阴影在 {@code EntityRenderDispatcher} 里按实体坐标绘制，且要求实体不可见。
+     * 这里只把「本帧」置为不可见，{@link #onRenderLevelStage} 在实体批次结束后立刻恢复。
+     */
+    private static void hideShadowForThisFrame(AbstractClientPlayer player) {
+        if (!player.isInvisible()) {
+            player.setInvisible(true);
+            SHADOW_HIDDEN.add(player.getUUID());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+            restoreShadow();
+        }
+    }
+
+    /** 兜底：万一某帧没走到 AFTER_ENTITIES（例如异常中断），tick 末也要把 invisible 复位。 */
+    @SubscribeEvent
+    public static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
+        if (event.phase == net.minecraftforge.event.TickEvent.Phase.END) {
+            restoreShadow();
+        }
+    }
+
+    private static void restoreShadow() {
+        if (SHADOW_HIDDEN.isEmpty()) {
+            return;
+        }
+        Level level = Minecraft.getInstance().level;
+        if (level != null) {
+            for (UUID id : SHADOW_HIDDEN) {
+                Player player = level.getPlayerByUUID(id);
+                if (player != null) {
+                    player.setInvisible(false);
+                }
+            }
+        }
+        SHADOW_HIDDEN.clear();
+    }
+
     private static void renderPlayerModel(PlayerRenderer renderer, AbstractClientPlayer entity, PoseStack poseStack,
                                           MultiBufferSource buffer, int packedLight, boolean hideHead) {
         PlayerModel<AbstractClientPlayer> model = renderer.getModel();
         model.young = entity.isBaby();
-        // 共享模型实例：每次渲染都显式赋值（K10），不做「只改一次」的优化
+        // 共享模型实例：每次渲染都显式赋值（K10），并记录我们改过谁
         model.head.visible = Minecraft.getInstance().options.getCameraType() != CameraType.FIRST_PERSON
                 || !hideHead
                 || !(entity instanceof LocalPlayer);
+        if (model.head.visible) {
+            HEAD_HIDDEN.remove(entity.getUUID());
+        } else {
+            HEAD_HIDDEN.add(entity.getUUID());
+        }
 
         model.setupAnim(entity, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);   // 四肢摆动清零 → 姿势冻结在动作上
         VertexConsumer consumer = buffer.getBuffer(
@@ -126,6 +199,17 @@ public final class RenderPlayerEventHandler {
         // 1.20.1 是 8 参浮点颜色（1.20.2+ 才是单 int 颜色），别照抄 1.21 代码
         model.renderToBuffer(poseStack, consumer, packedLight, OverlayTexture.NO_OVERLAY,
                 1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    private static void restoreHead(PlayerRenderer renderer, AbstractClientPlayer player) {
+        if (HEAD_HIDDEN.remove(player.getUUID())) {
+            renderer.getModel().head.visible = true;
+        }
+    }
+
+    private static boolean isLocalPlayer(AbstractClientPlayer player) {
+        LocalPlayer local = Minecraft.getInstance().player;
+        return local != null && local.getUUID().equals(player.getUUID());
     }
 
     private static float calculateYawToTarget(AbstractClientPlayer from, AbstractClientPlayer to) {
@@ -139,10 +223,20 @@ public final class RenderPlayerEventHandler {
                 ? Minecraft.getInstance().level.getGameTime() : 0L) + LOCK_TIMEOUT_TICKS;
         LOCKS.put(sender.getUUID(), new Lock(receiver.getUUID(), true, until));
         LOCKS.put(receiver.getUUID(), new Lock(sender.getUUID(), false, until));
+
+        if (isLocalPlayer(sender) || isLocalPlayer(receiver)) {
+            HugCameraHandler.onHugStart();                  // v1.4：当事人自动切第三人称
+        }
     }
 
     public static void unlockPlayers(AbstractClientPlayer sender, AbstractClientPlayer receiver) {
         LOCKS.remove(sender.getUUID());
         LOCKS.remove(receiver.getUUID());
+        // HEAD_HIDDEN / SHADOW_HIDDEN 不在这里清：头部在下一帧的 lock==null 分支恢复，
+        // 阴影在本帧 AFTER_ENTITIES 恢复，提前清掉会漏还原。
+
+        if (isLocalPlayer(sender) || isLocalPlayer(receiver)) {
+            HugCameraHandler.onHugEnd();
+        }
     }
 }

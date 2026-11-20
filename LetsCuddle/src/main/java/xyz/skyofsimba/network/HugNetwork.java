@@ -22,7 +22,8 @@ import xyz.skyofsimba.Letscuddle;
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class HugNetwork {
 
-    private static final String PROTOCOL = "1";
+    /** v1.4：payload 增加 cancelled 字段，协议号随之 +1（新旧客户端不能互连）。 */
+    private static final String PROTOCOL = "2";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Letscuddle.MODID, "main"),

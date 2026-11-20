@@ -17,6 +17,7 @@
   "letscuddle.message.invalid_request" : "Invalid hug request",
   "letscuddle.message.hug_in_progress_sender" : "%s is in a hug and cannot accept your request",
   "letscuddle.message.hug_in_progress_receiver" : "You are in a hug, unable to accept a hug request from %s",
+  "letscuddle.message.hug_cancelled" : "The hug has ended",
   "item.letscuddle.hug_ticket" : "Hug Ticket",
   "item.letscuddle.hug_ticket.desc" : "Use me to right click on your friend and send a hug request to him!"
 }

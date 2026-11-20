@@ -53,6 +53,8 @@ public final class HugCommandHandler {
     private static final long REQUEST_TIMEOUT_TICKS = 20L * 60L;
     /** 拥抱锁定 6 秒。 */
     private static final int ANIM_TICKS = 20 * 6;
+    /** v1.4：蹲下提前结束需要按住这么多 tick（0.25 s），防误触。 */
+    private static final int SNEAK_CANCEL_TICKS = 5;
     private static final double MAX_DISTANCE = 5.0D;
     private static final double NEARBY_RADIUS = 64.0D;
     private static final double STAND_OFFSET = 1.3D;
@@ -80,6 +82,8 @@ public final class HugCommandHandler {
         final Vec3 receiverPos;
         final List<ServerPlayer> nearbyPlayers;
         int ticksRemaining;
+        /** v1.4：连续蹲下的 tick 数，达到 SNEAK_CANCEL_TICKS 立刻结束拥抱。 */
+        int sneakTicks;
 
         HugStatus(UUID senderId, UUID receiverId, Vec3 senderPos, Vec3 receiverPos,
                   int ticksRemaining, List<ServerPlayer> nearbyPlayers) {
@@ -245,15 +249,19 @@ public final class HugCommandHandler {
         // 整批只抽一次，所有接收者拿到同一个动画号（原仓库 93f9487 的教训）
         int animation = RANDOM.nextInt(HugAnimationEnum.values().length);
         HugRenderPayload payload = new HugRenderPayload(
-                sender.getUUID().toString(), receiver.getUUID().toString(), false, animation);
+                sender.getUUID().toString(), receiver.getUUID().toString(), false, false, animation);
         for (ServerPlayer player : nearby) {
             HugNetwork.sendTo(player, payload);
         }
     }
 
-    private static void broadcastHugEnd(HugStatus status) {
+    /**
+     * @param cancelled v1.4：true 表示被蹲下提前取消，客户端要立即收掉动作；
+     *                  正常结束/掉线解锁传 false（动作自然播完）
+     */
+    private static void broadcastHugEnd(HugStatus status, boolean cancelled) {
         HugRenderPayload payload = new HugRenderPayload(
-                status.senderId.toString(), status.receiverId.toString(), true, 0);
+                status.senderId.toString(), status.receiverId.toString(), true, cancelled, 0);
         for (ServerPlayer player : status.nearbyPlayers) {
             if (player == null || player.hasDisconnected()) {
                 continue;
@@ -334,16 +342,31 @@ public final class HugCommandHandler {
 
             if (sender == null || receiver == null) {          // PORT-FIX K9
                 it.remove();
-                broadcastHugEnd(status);                        // 让旁观者解锁
+                broadcastHugEnd(status, true);                  // 让旁观者解锁，并收掉动作
                 continue;
             }
 
             sender.teleportTo(status.senderPos.x, status.senderPos.y, status.senderPos.z);
             receiver.teleportTo(status.receiverPos.x, status.receiverPos.y, status.receiverPos.z);
 
+            // v1.4：任一当事人按住蹲下 0.25 s 即提前结束（原版会把 sneak 状态同步到服务端）
+            if (sender.isShiftKeyDown() || receiver.isShiftKeyDown()) {
+                if (++status.sneakTicks >= SNEAK_CANCEL_TICKS) {
+                    it.remove();
+                    broadcastHugEnd(status, true);
+                    Component message = Component.translatable("letscuddle.message.hug_cancelled")
+                            .withStyle(ChatFormatting.YELLOW);
+                    sender.sendSystemMessage(message);
+                    receiver.sendSystemMessage(message);
+                    continue;
+                }
+            } else {
+                status.sneakTicks = 0;
+            }
+
             if (--status.ticksRemaining <= 0) {
                 it.remove();
-                broadcastHugEnd(status);
+                broadcastHugEnd(status, false);
             }
         }
     }
@@ -371,7 +394,7 @@ public final class HugCommandHandler {
                 continue;
             }
             hugs.remove();
-            broadcastHugEnd(status);
+            broadcastHugEnd(status, true);
         }
     }
 

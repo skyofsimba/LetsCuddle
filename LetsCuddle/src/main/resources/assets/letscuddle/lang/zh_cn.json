@@ -17,6 +17,7 @@
   "letscuddle.message.invalid_request" : "无效的拥抱请求",
   "letscuddle.message.hug_in_progress_sender" : "%s 正在拥抱中,无法接受你的请求",
   "letscuddle.message.hug_in_progress_receiver" : "你正在拥抱中,无法接受 %s 的请求",
+  "letscuddle.message.hug_cancelled" : "拥抱已结束",
   "item.letscuddle.hug_ticket" : "抱抱券",
   "item.letscuddle.hug_ticket.desc" : "用我右键你的朋友,对他发起拥抱请求吧！"
 }

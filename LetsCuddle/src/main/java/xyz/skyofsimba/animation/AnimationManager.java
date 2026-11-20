@@ -72,6 +72,21 @@ public final class AnimationManager {
         receiverLayer.setAnimation(newPlayer(receiverAnim));
     }
 
+    /**
+     * 提前结束（蹲下取消）：立刻收掉动作层上的动画，避免玩家带着拥抱姿势走开。
+     * <p>正常结束不调用这里 —— 原设计让动作自然播完（122 tick 略长于 120 tick 锁定）。
+     */
+    public static void stopHugAnimation(AbstractClientPlayer sender, AbstractClientPlayer receiver) {
+        ModifierLayer<IAnimation> senderLayer = layerOf(sender);
+        if (senderLayer != null) {
+            senderLayer.setAnimation(null);
+        }
+        ModifierLayer<IAnimation> receiverLayer = layerOf(receiver);
+        if (receiverLayer != null) {
+            receiverLayer.setAnimation(null);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     @Nullable
     private static ModifierLayer<IAnimation> layerOf(AbstractClientPlayer player) {

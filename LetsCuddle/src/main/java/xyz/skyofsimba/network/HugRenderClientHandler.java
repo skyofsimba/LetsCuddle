@@ -43,6 +43,10 @@ public final class HugRenderClientHandler {
                 AnimationManager.playHugAnimation(from, to, values[index]);
             } else {
                 RenderPlayerEventHandler.unlockPlayers(from, to);
+                if (payload.cancelled()) {
+                    // 蹲下提前结束：立刻收掉动作，不然玩家会带着拥抱姿势走开
+                    AnimationManager.stopHugAnimation(from, to);
+                }
             }
         } catch (Exception e) {
             // 原实现这里会断开连接；1.20.1 上没必要，记日志即可（port-plan 附录 C.7）
