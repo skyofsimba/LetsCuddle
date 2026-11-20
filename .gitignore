@@ -22,3 +22,4 @@ Thumbs.db
 
 # ---- 临时工作目录 ----
 .wrapper-tmp/
+.fg-src/
