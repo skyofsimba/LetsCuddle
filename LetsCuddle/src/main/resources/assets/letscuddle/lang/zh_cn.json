@@ -1,6 +1,6 @@
 {
-  "letscuddle.message.sendrequest" : "%s 向你发起了拥抱请求! ",
-  "letscuddle.message.sendsuccess" : "你成功向 %s 发送了拥抱请求",
+  "letscuddle.message.sendrequest" : "%s 向你发起了「%s」拥抱请求! ",
+  "letscuddle.message.sendsuccess" : "你成功向 %s 发送了「%s」拥抱请求",
   "letscuddle.message.acceptrequest": "[同意] ",
   "letscuddle.message.rejectrequest": "[拒绝] ",
   "letscuddle.message.sender_accepted": "%s 接受了你的拥抱请求!",
@@ -8,7 +8,6 @@
   "letscuddle.message.sender_rejected": "%s 拒绝了你的拥抱请求.",
   "letscuddle.message.receiver_rejected": "你拒绝了来自 %s 的拥抱请求.",
   "letscuddle.message.sendernotfound": "找不到发送者!",
-  "letscuddle.networking.failed": "HugMe: 网络连接失败 %s",
   "letscuddle.message.too_far": "你距离 %s 太远了! [>5]",
   "letscuddle.message.invalid_level" : "你与 %s 不在同一个世界",
   "letscuddle.message.unsafe_position" : "%s前的区域无法站立!",
@@ -18,6 +17,10 @@
   "letscuddle.message.hug_in_progress_sender" : "%s 正在拥抱中,无法接受你的请求",
   "letscuddle.message.hug_in_progress_receiver" : "你正在拥抱中,无法接受 %s 的请求",
   "letscuddle.message.hug_cancelled" : "拥抱已结束",
+  "letscuddle.message.animation_selected" : "当前动作：%s",
+  "letscuddle.animation.normal" : "普通拥抱",
+  "letscuddle.animation.touch_head" : "摸头拥抱",
   "item.letscuddle.hug_ticket" : "抱抱券",
-  "item.letscuddle.hug_ticket.desc" : "用我右键你的朋友,对他发起拥抱请求吧！"
+  "item.letscuddle.hug_ticket.desc" : "用我右键你的朋友,对他发起拥抱请求吧！",
+  "item.letscuddle.hug_ticket.animation" : "动作：%s（潜行+右键切换）"
 }

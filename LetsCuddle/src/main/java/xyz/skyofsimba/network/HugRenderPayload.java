@@ -9,27 +9,29 @@ import java.util.function.Supplier;
 
 /**
  * 拥抱渲染状态包。线上字段顺序固定：
- * sender(String) → receiver(String) → done(boolean) → cancelled(boolean) → animation(VarInt)。
+ * sender(String) → receiver(String) → done(boolean) → cancelled(boolean) → animation(String)。
+ *
+ * <p>v1.5：animation 由 ordinal(int) 改为稳定字符串 id（K18），新增动作不再受枚举顺序影响。
  *
  * @param sender   发起者 UUID 字符串
  * @param receiver 接受者 UUID 字符串
  * @param done     true = 拥抱结束（解锁渲染），false = 开始
  * @param cancelled 仅 {@code done=true} 时有意义：true 表示被蹲下提前取消，客户端要立即收掉动作
- * @param animation {@link xyz.skyofsimba.animation.HugAnimationEnum} 的 ordinal（v1.5 改为字符串 id）
+ * @param animation {@link xyz.skyofsimba.animation.HugAnimationEnum#id()}，结束包里是空串
  */
-public record HugRenderPayload(String sender, String receiver, boolean done, boolean cancelled, int animation) {
+public record HugRenderPayload(String sender, String receiver, boolean done, boolean cancelled, String animation) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(sender);
         buf.writeUtf(receiver);
         buf.writeBoolean(done);
         buf.writeBoolean(cancelled);
-        buf.writeVarInt(animation);
+        buf.writeUtf(animation);
     }
 
     public static HugRenderPayload decode(FriendlyByteBuf buf) {
         return new HugRenderPayload(buf.readUtf(), buf.readUtf(), buf.readBoolean(), buf.readBoolean(),
-                buf.readVarInt());
+                buf.readUtf());
     }
 
     /**

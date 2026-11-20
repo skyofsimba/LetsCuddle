@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -59,7 +58,6 @@ public final class HugCommandHandler {
     private static final double NEARBY_RADIUS = 64.0D;
     private static final double STAND_OFFSET = 1.3D;
     private static final double STAND_HALF_WIDTH = 0.3D;
-    private static final Random RANDOM = new Random();
 
     private static final Map<Pair<UUID, UUID>, HugRequest> REQUESTS = new ConcurrentHashMap<>();
     private static final Map<Pair<UUID, UUID>, HugStatus> HUGS = new ConcurrentHashMap<>();
@@ -72,8 +70,9 @@ public final class HugCommandHandler {
      * @param senderId   发起者
      * @param receiverId 接受者
      * @param expireAt   过期时刻（服务端 tick 计数，PORT-FIX K1/K2）
+     * @param animation  v1.5：发起者在券上选的动作，接受时按它播放（不再服务端随机）
      */
-    public record HugRequest(UUID senderId, UUID receiverId, long expireAt) {}
+    public record HugRequest(UUID senderId, UUID receiverId, long expireAt, HugAnimationEnum animation) {}
 
     private static final class HugStatus {
         final UUID senderId;
@@ -130,7 +129,7 @@ public final class HugCommandHandler {
 
     // ------------------------------------------------------------------ 发起 / 接受 / 拒绝
 
-    public static boolean startHugRequest(ServerPlayer sender, ServerPlayer receiver) {
+    public static boolean startHugRequest(ServerPlayer sender, ServerPlayer receiver, HugAnimationEnum animation) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return false;
@@ -142,7 +141,7 @@ public final class HugCommandHandler {
             return false;
         }
         REQUESTS.put(key, new HugRequest(sender.getUUID(), receiver.getUUID(),
-                server.getTickCount() + REQUEST_TIMEOUT_TICKS));
+                server.getTickCount() + REQUEST_TIMEOUT_TICKS, animation));
         return true;
     }
 
@@ -182,7 +181,7 @@ public final class HugCommandHandler {
         receiver.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(sender.getX(), sender.getEyeY(), sender.getZ()));
 
-        broadcastHugStart(sender, receiver);
+        broadcastHugStart(sender, receiver, request.animation());
         REQUESTS.remove(key);
     }
 
@@ -239,17 +238,16 @@ public final class HugCommandHandler {
 
     // ------------------------------------------------------------------ 广播与状态
 
-    private static void broadcastHugStart(ServerPlayer sender, ServerPlayer receiver) {
+    private static void broadcastHugStart(ServerPlayer sender, ServerPlayer receiver, HugAnimationEnum animation) {
         List<ServerPlayer> nearby = getNearbyPlayers(sender);
         HUGS.put(key(sender, receiver), new HugStatus(
                 sender.getUUID(), receiver.getUUID(),
                 sender.position(), receiver.position(),
                 ANIM_TICKS, nearby));
 
-        // 整批只抽一次，所有接收者拿到同一个动画号（原仓库 93f9487 的教训）
-        int animation = RANDOM.nextInt(HugAnimationEnum.values().length);
+        // v1.5：动作由发起者决定（券上 NBT），整批接收者拿同一个 id
         HugRenderPayload payload = new HugRenderPayload(
-                sender.getUUID().toString(), receiver.getUUID().toString(), false, false, animation);
+                sender.getUUID().toString(), receiver.getUUID().toString(), false, false, animation.id());
         for (ServerPlayer player : nearby) {
             HugNetwork.sendTo(player, payload);
         }
@@ -261,7 +259,7 @@ public final class HugCommandHandler {
      */
     private static void broadcastHugEnd(HugStatus status, boolean cancelled) {
         HugRenderPayload payload = new HugRenderPayload(
-                status.senderId.toString(), status.receiverId.toString(), true, cancelled, 0);
+                status.senderId.toString(), status.receiverId.toString(), true, cancelled, "");
         for (ServerPlayer player : status.nearbyPlayers) {
             if (player == null || player.hasDisconnected()) {
                 continue;
@@ -417,3 +415,4 @@ public final class HugCommandHandler {
         return Component.translatable(key, other.getName().getString()).withStyle(ChatFormatting.RED);
     }
 }
+

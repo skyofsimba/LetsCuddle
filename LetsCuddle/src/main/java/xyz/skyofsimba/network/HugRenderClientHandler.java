@@ -33,14 +33,14 @@ public final class HugRenderClientHandler {
         try {
             if (!payload.done()) {
                 RenderPlayerEventHandler.lockPlayers(from, to);
-                HugAnimationEnum[] values = HugAnimationEnum.values();
-                int index = payload.animation();
-                if (index < 0 || index >= values.length) {
-                    index = 0;                       // PORT-FIX K18 兜底：越界序号退回默认动作
+                HugAnimationEnum animation = HugAnimationEnum.byId(payload.animation());
+                if (animation == null) {
+                    // 未知/空 id（版本不一致或数据被改）退回默认动作，不让客户端崩
+                    animation = HugAnimationEnum.NORMALHUG;
                 }
                 Letscuddle.LOGGER.debug("Hug start: {} <-> {} anim={}",
-                        from.getName().getString(), to.getName().getString(), values[index]);
-                AnimationManager.playHugAnimation(from, to, values[index]);
+                        from.getName().getString(), to.getName().getString(), animation.id());
+                AnimationManager.playHugAnimation(from, to, animation);
             } else {
                 RenderPlayerEventHandler.unlockPlayers(from, to);
                 if (payload.cancelled()) {
