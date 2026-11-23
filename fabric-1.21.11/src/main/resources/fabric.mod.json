@@ -25,6 +25,9 @@
     "java": ">=21",
     "fabric-api": "*"
   },
+  "suggests": {
+    "player_animation_library": ">=1.1.12"
+  },
   "contact": {
     "homepage": "https://space.bilibili.com/350703330"
   }

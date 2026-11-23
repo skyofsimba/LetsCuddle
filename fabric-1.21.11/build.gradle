@@ -33,12 +33,14 @@ loom {
 }
 
 repositories {
-    // loom 自动加 Fabric maven；mavenCentral 供通用依赖，
-    // Sponge 仓库是 sponge-mixin 的上游（离线构建时 Gradle 按仓库分别缓存元数据）。
-    mavenCentral()
+    // PAL（Player Animation Library，playerAnimator 的继任者）的发布仓库
     maven {
-        name = 'Sponge'
-        url = 'https://repo.spongepowered.org/repository/maven-public/'
+        name = 'Redlance'
+        url = 'https://repo.redlance.org/public'
+        content {
+            includeGroup 'com.zigythebird.playeranim'
+            includeGroup 'org.redlance.mochafloats'
+        }
     }
 }
 
@@ -48,13 +50,9 @@ dependencies {
 
     modImplementation "net.fabricmc:fabric-loader:${loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
-}
 
-// 本工程不使用 MixinExtras；开发环境离线时取不到它的 fabric 产物，直接从依赖图里摘掉。
-// sponge-mixin 固定在构建机上可离线解析的版本（API 与 loader 声明的一致）。
-configurations.configureEach {
-    exclude group: 'io.github.llamalad7'
-    resolutionStrategy.force 'net.fabricmc:sponge-mixin:0.16.4+mixin.0.8.7'
+    // 动画后端：与 1.20.1 的 playerAnimator 对应。modImplementation 会把它 remap 到本工程的 Yarn 映射。
+    modImplementation "com.zigythebird.playeranim:PlayerAnimationLibFabric:${pal_version}"
 }
 
 // common/ 是无构建文件的纯 Java 源目录：只编进 main，client source set 通过 main 的类路径使用
