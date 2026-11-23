@@ -145,6 +145,7 @@ assets/heartpack/
 ```json
 {
   "format": 1,
+  "content_version": "1",
   "sender": "heartpack:warm_sender",
   "receiver": "heartpack:warm_receiver",
   "name_key": "heartpack.animation.warm",
@@ -156,6 +157,8 @@ assets/heartpack/
 ```
 
 `name_key` 需要在 `assets/heartpack/lang/zh_cn.json` / `en_us.json` 里有对应条目；没有就退回 `name`。
+
+`content_version` 是作者声明的**内容版本**：改动作数值、换文件就 +1。两端不一致时服务端会回退默认动作（见[格式规范 §6](animation-pack-format.md)）。注意它和动画 JSON 里的 `"version"` 不是一回事——后者**不要写**。
 
 ### 4.7 安装与热重载
 
@@ -183,6 +186,7 @@ assets/heartpack/
 | 动作不在循环里 | manifest 没被扫描到 / JSON 坏了 / `format` 不是 1 | 看日志；确认路径 `assets/<ns>/cuddle_animations/*.json`；用 JSON 校验器 |
 | 动作在，但播放时没反应 | `sender`/`receiver` 指向的动画 id 不存在 | 确认动画文件在 `player_animation(s)/`，且 `"name"` 与引用一致 |
 | 只有一方动 | 只做了 sender 或 receiver | 两段都要 |
+| 一方看到 A、另一方看到 B | 两端包版本不同，或改了动作没 bump `content_version` | 让两人装同一个包；改动作就 +1 |
 | 两人之间空 1 格 | `torso.z` 是 0，或加了 `"version"` 导致 `torso` 不再是根节点 | 用 `torso.z=-1.0`，删掉 `version` |
 | 位移大了 16 倍 | 用了 PAL 的"像素"语义去写 PlayerAnimator 格式 | 1.20.1/PlayerAnimator 格式用**米**；跨版本时以 P7 的数值对比为准 |
 | 动作被硬切 | `lock_ticks` 小于实际时长 | 调到 `stopTick / speed` 附近 |
@@ -209,7 +213,7 @@ assets/heartpack/
    `pack_format` 按目标 MC 版本填：1.20.1 = 15；1.21.11 查对应版本的表。同时支持两个版本时，做两个包（或接受其中一个版本的"格式不匹配"提示）。
 2. zip 的根必须是 `pack.mcmeta` + `assets/`，不要多套一层文件夹。
 3. 写 README：支持的动作 id、需要的 LetsCuddle 版本、截图、许可证。
-4. 版本号：`1.0.0` 起；改 manifest 字段就升 minor，改动作数值升 patch。
+4. 版本号：`1.0.0` 起；改 manifest 字段就升 minor，改动作数值升 patch；同时把 manifest 的 `content_version` +1（它才是运行时比较的版本，包版本号只是给人看的）。
 5. 不要打包可执行文件、不要引用外部 URL、不要超过 10 MB。
 
 ---
@@ -220,6 +224,7 @@ assets/heartpack/
 - [ ] manifest 在 `assets/<ns>/cuddle_animations/`，id 与路径一致。
 - [ ] sender/receiver 都存在，`"name"` 与引用一致。
 - [ ] 没有 `"version"`，`degrees:false`，`stopTick` 与 `lock_ticks` 对得上。
+- [ ] manifest 的 `content_version` 在改动作后已 +1；两人装的是同一个包。
 - [ ] 1.20.1 与 1.21.11 的动画文件各放一份。
 - [ ] F3+T 后动作出现。
 - [ ] 双人测试：贴合、朝向、高度、6 秒、蹲下取消、掉线。

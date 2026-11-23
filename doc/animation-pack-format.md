@@ -9,7 +9,7 @@
 ## 0. 一句话
 
 一个**动作包**就是一个普通的 Minecraft **资源包**：里面放一组 `manifest`，每个 manifest 指向两段玩家动画（发起者 + 接受者）。
-LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作；服务端只负责在两人之间同步**动作 id** 与**能力列表**，从不解析包内容。
+LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作；服务端只负责在两人之间同步**动作 id / 内容版本**与**能力列表**，从不解析包内容。
 
 ---
 
@@ -46,6 +46,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 ```json
 {
   "format": 1,
+  "content_version": "1",
   "sender": "heartpack:warm_sender",
   "receiver": "heartpack:warm_receiver",
   "name_key": "heartpack.animation.warm",
@@ -61,6 +62,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 | 字段 | 类型 | 必填 | 默认 | 范围 / 说明 |
 |---|---|---|---|---|
 | `format` | int | **是** | — | 必须 `1`；`> 1` 的包会被拒绝并记日志（前向兼容留给未来） |
+| `content_version` | string | 否 | `"1"` | ≤ 32 字符；**内容版本**：改动画数值/替换文件就 +1。两端不一致时回退默认（见 §6） |
 | `sender` | string | **是** | — | 发起者动画 id，`<ns>:<path>`，≤ 128 字符 |
 | `receiver` | string | **是** | — | 接受者动画 id，同上 |
 | `name_key` | string | 否 | — | 语言键；存在时优先用 `Component.translatableWithFallback(name_key, name)` |
@@ -78,6 +80,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 |---|---|
 | 不是合法 JSON / 顶层不是对象 | 拒绝该 manifest，`WARN` 带路径与原因 |
 | `format` 缺失或 ≠ 1 | 拒绝；`> 1` 额外提示"需要更新的 LetsCuddle" |
+| `content_version` 不是字符串或超长 | 用 `"1"` 并 `WARN`（不整包拒绝） |
 | `sender` / `receiver` 缺失、不是字符串、不是合法 id | 拒绝 |
 | `speed` / `lock_ticks` / `order` 类型不对或越界 | **夹紧到范围内**并 `WARN`（不整包拒绝，避免一个笔误让整个包消失） |
 | `name_key` / `name` 都缺 | 允许，显示 id |
@@ -124,7 +127,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 | 触发 | 客户端 **F3+T**（资源重载）。`/reload` 只重载数据包，**不会**重载 `assets/`，不要用它测动作包 |
 | 线程 | 资源重载线程解析 → 构建不可变快照 → 原子替换；不在渲染线程做 I/O |
 | 重载时正在播放 | 已开始的贴贴继续播完（后端持有动画对象）；注册表只影响"下一次播放" |
-| 重载后 | 客户端把新的能力列表（id → lock_ticks）发给服务端 |
+| 重载后 | 客户端把新的能力列表（id → lock_ticks + content_version）发给服务端 |
 | 失败 | 单个包失败不影响其它包；全部失败时保留旧快照 |
 | 首次进服 | 客户端收到服务端的"请求能力"包后回复；服务端在 100 tick 内没收到就按"只有内置动作"处理并提示 |
 
@@ -141,21 +144,37 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 
 ---
 
-## 6. 服务端行为
+## 6. 部署形态与服务端行为
+
+### 6.1 谁需要装什么
+
+| 角色 | 装 letscuddle | 装动作包 | 说明 |
+|---|---|---|---|
+| 服务端 | 必须 | **不需要** | 只转发 id / content_version / 能力，不解析包 |
+| 发起者 / 接受者 | 必须 | 要玩自定义动作就必须，且**同一个包、同一个 content_version** | 服务端校验；不一致回退内置 |
+| 旁观者 | 必须 | 可选 | 没有包或版本不同 → 本地回退内置默认动作 |
+
+- 不装任何动作包：内置 `letscuddle:normal` / `letscuddle:touch_head` 可用。
+- 客户端还需要对应的动画库：1.20.1 是 playerAnimator（客户端依赖），1.21.11 是 PAL（`suggests` + 守卫）；**服务端不需要**。
+- 包的分发不由模组负责：整合包、服务器 `resource-pack=`、手动放进 `resourcepacks/` 都可以；模组不会主动下发。
+- 服务端**无法**校验包内容，只能校验客户端上报的 id / content_version / lock_ticks；所以"两人同包同版本"是玩家侧的要求。
+
+### 6.2 服务端做什么
 
 服务端**不读 `assets/`、不解析包**。它只知道每个在线客户端上报的：
 
 ```
 protocol = 4
 format   = 1
-animations = { "<id>": <lock_ticks>, ... }   // 最多 256 条
+animations = { "<id>": { "lock_ticks": 120, "content_version": "1" }, ... }   // 最多 256 条
 ```
 
 用途：
 
 1. 发起请求时，检查**接受者**是否也有这个 id；没有 → 回退到 `letscuddle:normal` 并提示发起者。
-2. 接受时，`lock_ticks = min(发起者值, 接受者值)`，夹紧到 `[20, 400]`。
-3. 广播给 64 格内的旁观者；旁观者缺这个 id 时**不播动作但照常锁定/转向**，只记一次 debug 日志。
+2. 双方 `content_version` 不同 → 同样回退默认并提示（避免"同 id 不同动作"）。
+3. 接受时，`lock_ticks = min(发起者值, 接受者值)`，夹紧到 `[20, 400]`。
+4. 广播给 64 格内的旁观者；旁观者缺这个 id 或版本不同 → **本地回退到内置默认动作**（宁可看到另一个拥抱，也不要两个人僵住）。
 
 服务端**不**因为某个客户端缺包而踢人；只有协议版本不匹配（Forge 通道版本 / Fabric 能力包里的 `protocol`）才拒绝。
 
@@ -186,6 +205,7 @@ animations = { "<id>": <lock_ticks>, ... }   // 最多 256 条
 
 - [ ] `pack.mcmeta` 的 `pack_format` 与目标 MC 版本匹配（1.20.1 = 15；1.21.11 查对应版本的表）。
 - [ ] manifest 在 `assets/<你的ns>/cuddle_animations/`，id 与路径一致。
+- [ ] 改过动画数值/替换文件时，`content_version` 已 +1；两端一致。
 - [ ] sender / receiver 两段动画都存在，且 `"name"` 字段与引用一致。
 - [ ] 动画 JSON 没有 `version` 字段，`degrees:false`，`stopTick` 与 `lock_ticks` 对得上。
 - [ ] 1.20.1 与 1.21.11 的动画文件分别放在 `player_animation/` 与 `player_animations/`。
