@@ -181,20 +181,20 @@ assets/heartpack/
 
 ## 5. 调试：症状 → 原因 → 处理
 
-| 症状 | 最可能的原因 | 处理 |
-|---|---|---|
-| 动作不在循环里 | manifest 没被扫描到 / JSON 坏了 / `format` 不是 1 | 看日志；确认路径 `assets/<ns>/cuddle_animations/*.json`；用 JSON 校验器 |
-| 动作在，但播放时没反应 | `sender`/`receiver` 指向的动画 id 不存在 | 确认动画文件在 `player_animation(s)/`，且 `"name"` 与引用一致 |
-| 只有一方动 | 只做了 sender 或 receiver | 两段都要 |
-| 一方看到 A、另一方看到 B | 两端包版本不同，或改了动作没 bump `content_version` | 让两人装同一个包；改动作就 +1 |
-| 两人之间空 1 格 | `torso.z` 是 0，或加了 `"version"` 导致 `torso` 不再是根节点 | 用 `torso.z=-1.0`，删掉 `version` |
-| 位移大了 16 倍 | 用了"像素"语义去写 PlayerAnimator 格式 | 本格式的位移单位是**米**，`0.0625` 才是 1 像素 |
-| 动作被硬切 | `lock_ticks` 小于实际时长 | 调到 `stopTick / speed` 附近 |
-| 结束后保持最后一帧 | `lock_ticks` 远大于动作时长 | 同上 |
-| 两人脸对脸但姿势错位 | 用了 `turn` 或整体位移去调朝向 | 朝向由代码处理；只用骨骼旋转与 `torso.z` |
-| 1.20.1 能播、1.21.11 不能 | 文件只放了 `player_animation/` | 再放一份到 `player_animations/` |
-| 1.21.11 能播、1.20.1 不能 | 文件只放了 `player_animations/` | 再放一份到 `player_animation/`（内容相同） |
-| 重载后动作消失 | 包被移出/改坏，注册表回退 | 看日志；修好后 F3+T |
+| 症状                   | 最可能的原因                                          | 处理                                                         |
+| -------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| 动作不在循环里              | manifest 没被扫描到 / JSON 坏了 / `format` 不是 1        | 看日志；确认路径 `assets/<ns>/cuddle_animations/*.json`；用 JSON 校验器 |
+| 动作在，但播放时没反应          | `sender`/`receiver` 指向的动画 id 不存在                | 确认动画文件在 `player_animation(s)/`，且 `"name"` 与引用一致            |
+| 只有一方动                | 只做了 sender 或 receiver                           | 两段都要                                                       |
+| 一方看到 A、另一方看到 B       | 两端包版本不同，或改了动作没 bump `content_version`           | 让两人装同一个包；改动作就 +1                                           |
+| 两人之间空 1 格            | `torso.z` 是 0，或加了 `"version"` 导致 `torso` 不再是根节点 | 用 `torso.z=-1.0`，删掉 `version`                              |
+| 位移大了 16 倍            | 用了"像素"语义去写 PlayerAnimator 格式                    | 本格式的位移单位是**米**，`0.0625` 才是 1 像素                            |
+| 动作被硬切                | `lock_ticks` 小于实际时长                             | 调到 `stopTick / speed` 附近                                   |
+| 结束后保持最后一帧            | `lock_ticks` 远大于动作时长                            | 同上                                                         |
+| 两人脸对脸但姿势错位           | 用了 `turn` 或整体位移去调朝向                             | 朝向由代码处理；只用骨骼旋转与 `torso.z`                                  |
+| 1.20.1 能播、1.21.11 不能 | 文件只放了 `player_animation/`                       | 再放一份到 `player_animations/`                                 |
+| 1.21.11 能播、1.20.1 不能 | 文件只放了 `player_animations/`                      | 再放一份到 `player_animation/`（内容相同）                            |
+| 重载后动作消失              | 包被移出/改坏，注册表回退                                   | 看日志；修好后 F3+T                                               |
 
 ### 5.1 没有"眼睛"时怎么调
 
