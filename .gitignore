@@ -4,12 +4,7 @@
 # ---- Gradle / 构建产物 ----
 .gradle/
 build/
-LetsCuddle/run/
-LetsCuddle/run2/
-LetsCuddle/run-data/
-# 2.0 布局（P0 重命名后生效；保留旧路径便于过渡）
 forge-1.20.1/run/
-forge-1.20.1/run2/
 forge-1.20.1/run-data/
 fabric-1.21.11/run/
 fabric-1.21.11/run-data/
@@ -35,8 +30,6 @@ out/
 Thumbs.db
 
 # ---- 临时工作目录 ----
-.wrapper-tmp/
-.fg-src/
 /temp/
 
 # 提交信息临时文件

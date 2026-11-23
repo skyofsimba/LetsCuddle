@@ -1,0 +1,4 @@
+accessWidener v2 named
+
+# 第三人称镜头偏移：Camera#setPos(Vec3d) 在 1.21.11 是 protected
+accessible method net/minecraft/client/render/Camera setPos (Lnet/minecraft/util/math/Vec3d;)V

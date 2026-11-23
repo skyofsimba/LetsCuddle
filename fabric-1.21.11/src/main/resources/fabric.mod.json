@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "letscuddle",
+  "version": "${version}",
+  "name": "Let's Cuddle!",
+  "description": "Cuddle with other players using a cuddle ticket!",
+  "authors": ["TuYw", "skyofsimba"],
+  "license": "MIT",
+  "icon": "assets/letscuddle/textures/item/cuddle_ticket.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["xyz.skyofsimba.Letscuddle"],
+    "client": ["xyz.skyofsimba.client.LetscuddleClient"]
+  },
+  "mixins": [
+    {
+      "config": "letscuddle.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "accessWidener": "letscuddle.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "contact": {
+    "homepage": "https://space.bilibili.com/350703330"
+  }
+}

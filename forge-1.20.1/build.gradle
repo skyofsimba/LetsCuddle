@@ -24,12 +24,16 @@ group = mod_group_id
 version = mod_version
 
 base {
-    archivesName = mod_id
+    archivesName = "letscuddle-${minecraft_version}-forge"
 }
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(17)
 }
+
+// common/ 是无构建文件的纯 Java 源目录（边界见 common/README.md）
+sourceSets.main.java.srcDir '../common/src/main/java'
+sourceSets.main.resources.srcDir '../common/src/main/resources'
 
 minecraft {
     // The mappings can be changed at any time and must be in the following format.
@@ -173,6 +177,14 @@ dependencies {
     // 必须 fg.deobf 包一层，否则拿到的是 SRG 名，编译期找不到 get3DTransform 等方法。
     implementation fg.deobf("dev.kosmx.player-anim:player-animation-lib-forge:${player_animation_version}")
 
+    // common 的单元测试跑在这里（1.20.1 是参考平台）
+    testImplementation platform('org.junit:junit-bom:5.10.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -191,6 +203,12 @@ tasks.named('processResources', ProcessResources).configure {
     filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
         expand replaceProperties + [project: project]
     }
+
+    // 动画 JSON 在中性目录 anim/raw 维护（与 1.21.11 共用），这里映射到 playerAnimator 的约定目录
+    from('../common/src/main/resources/anim/raw') {
+        into 'assets/letscuddle/player_animation'
+    }
+    exclude 'anim/**'
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
