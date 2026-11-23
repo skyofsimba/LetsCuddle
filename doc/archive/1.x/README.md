@@ -28,7 +28,7 @@
 
 - tag：`v1.6`（`gradle.properties` 里是 `1.6.0`；历史 tag 还有 `v1.5`、`v1.5.1`）
 - 远程：<https://github.com/skyofsimba/LetsCuddle>
-- 2.0 开工时会从该基线拉 `release/1.x` 维护分支；1.x 只修 bug，不再加功能。
+- 2.0 已从该基线建 `release/1.x` 维护分支；1.x 只修 bug，不再加功能。
 
 ## 链接修正
 
