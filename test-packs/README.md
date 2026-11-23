@@ -2,9 +2,18 @@
 
 给动作包作者和验收用的最小示例包。每个目录本身就是一个 **Minecraft 资源包**：
 把整个目录（或压成 zip）放进 `.minecraft/resourcepacks/`，在游戏里 F3+T 重载即可。
+它们同时也是**可以照着改的起点**：`valid-new/` 就是"新增一个动作"的最小完整结构。
 
-`pack.mcmeta` 用 `pack_format: 15` + `supported_formats: 15..99`：1.20.1 认得前者，
-1.21.11 用后者判断兼容，两边都不会报"格式不匹配"。
+`pack.mcmeta` 同时写了三套版本字段，两个版本都认：
+
+```json
+"pack_format": 15,                                   // 1.20.1（资源格式 15）
+"supported_formats": { "min_inclusive": 15, "max_inclusive": 75 },
+"min_format": 15, "max_format": 75                   // 1.21.9+ 的写法，1.21.11 资源格式 = 75
+```
+
+只写 `pack_format: 15` 时 1.21.11 会提示"为未知版本的 Minecraft 打造"——1.21.9 起要求
+`min_format`/`max_format`，且 `supported_formats` 的上界不能超过 64。
 
 ## 包清单
 

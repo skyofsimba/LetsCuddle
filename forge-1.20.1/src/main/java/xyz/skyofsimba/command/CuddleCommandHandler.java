@@ -149,11 +149,11 @@ public final class CuddleCommandHandler {
         String animId = requested;
         if (!receiverCaps.has(requested)) {
             sender.sendSystemMessage(yellow(Component.translatable("letscuddle.message.anim_unavailable",
-                    receiver.getName().getString(), animName(requested))));
+                    receiver.getName().getString(), animName(requested, senderCaps))));
             animId = CuddleConstants.DEFAULT_ANIM_ID;
         } else if (!senderCaps.sameContent(requested, receiverCaps)) {
             sender.sendSystemMessage(yellow(Component.translatable("letscuddle.message.anim_version_mismatch",
-                    receiver.getName().getString(), animName(requested))));
+                    receiver.getName().getString(), animName(requested, senderCaps))));
             animId = CuddleConstants.DEFAULT_ANIM_ID;
         }
 
@@ -166,9 +166,9 @@ public final class CuddleCommandHandler {
         REQUESTS.put(key, new CuddleRequest(sender.getUUID(), receiver.getUUID(),
                 server.getTickCount() + CuddleConstants.REQUEST_TIMEOUT_TICKS, animId, lockTicks, contentVersion));
 
-        xyz.skyofsimba.item.CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId));
+        xyz.skyofsimba.item.CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId, senderCaps));
         sender.sendSystemMessage(Component.translatable("letscuddle.message.sendsuccess",
-                receiver.getName().getString(), animName(animId)).withStyle(ChatFormatting.GREEN));
+                receiver.getName().getString(), animName(animId, senderCaps)).withStyle(ChatFormatting.GREEN));
         return true;
     }
 
@@ -427,8 +427,20 @@ public final class CuddleCommandHandler {
         return new Pair<>(sender.getUUID(), receiver.getUUID());
     }
 
-    /** 服务端能显示的动作名：内置动作走语言键，外部动作用 id。 */
-    private static Component animName(String animId) {
+    /**
+     * 服务端能显示的动作名：优先用客户端上报的 name_key/name（这样资源包里的名字能显示出来），
+     * 其次内置动作走语言键，最后才是 id。
+     */
+    private static Component animName(String animId, CuddleCaps source) {
+        CuddleCaps.Anim anim = source == null ? null : source.anim(animId);
+        if (anim != null) {
+            if (anim.hasNameKey()) {
+                return Component.translatableWithFallback(anim.nameKey(), anim.hasName() ? anim.name() : animId);
+            }
+            if (anim.hasName()) {
+                return Component.literal(anim.name());
+            }
+        }
         String key = CuddleAnimNames.builtinNameKey(animId);
         return key == null ? Component.literal(animId) : Component.translatable(key);
     }

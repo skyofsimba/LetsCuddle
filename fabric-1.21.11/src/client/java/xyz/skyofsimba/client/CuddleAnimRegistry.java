@@ -251,7 +251,8 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
                 if (map.size() >= CuddleConstants.MAX_ANIMS_PER_CLIENT) {
                     break;
                 }
-                map.put(def.id(), new CuddleCaps.Anim(def.lockTicks(), def.contentVersion()));
+                map.put(def.id(), new CuddleCaps.Anim(def.lockTicks(), def.contentVersion(),
+                        def.nameKey(), def.name()));
             }
             return new CuddleCaps(CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT, map);
         }

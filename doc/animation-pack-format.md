@@ -203,7 +203,7 @@ animations = { "<id>": { "lock_ticks": 120, "content_version": "1" }, ... }   //
 
 ## 9. 作者检查单
 
-- [ ] `pack.mcmeta` 的 `pack_format` 与目标 MC 版本匹配（1.20.1 = 15；1.21.11 查对应版本的表）。
+- [ ] `pack.mcmeta` 能同时在目标版本加载（1.20.1 看 `pack_format` = 15；1.21.11 看 `min_format`/`max_format`，资源格式 75）。
 - [ ] manifest 在 `assets/<你的ns>/cuddle_animations/`，id 与路径一致。
 - [ ] 改过动画数值/替换文件时，`content_version` 已 +1；两端一致。
 - [ ] sender / receiver 两段动画都存在，且 `"name"` 字段与引用一致。

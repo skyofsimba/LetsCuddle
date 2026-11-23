@@ -206,11 +206,21 @@ assets/heartpack/
 
 ## 6. 发布
 
-1. 目录结构见 §4.5；根目录加 `pack.mcmeta`：
+1. 目录结构见 §4.5；根目录加 `pack.mcmeta`。**一个包同时支持 1.20.1 与 1.21.11 的写法**：
    ```json
-   { "pack": { "pack_format": 15, "description": "HeartPack for LetsCuddle" } }
+   {
+     "pack": {
+       "description": "HeartPack for LetsCuddle",
+       "pack_format": 15,
+       "supported_formats": { "min_inclusive": 15, "max_inclusive": 75 },
+       "min_format": 15,
+       "max_format": 75
+     }
+   }
    ```
-   `pack_format` 按目标 MC 版本填：1.20.1 = 15；1.21.11 查对应版本的表。同时支持两个版本时，做两个包（或接受其中一个版本的"格式不匹配"提示）。
+   1.20.1 只读 `pack_format`（资源格式 15）；1.21.11 的资源格式是 **75**（1.21.9 起改用
+   `min_format`/`max_format`，`supported_formats` 的上界不能超过 64，否则会被判定"未知版本"）。
+   只发单版本时，保留 `pack_format` 与对应版本的 `min_format`/`max_format` 即可。
 2. zip 的根必须是 `pack.mcmeta` + `assets/`，不要多套一层文件夹。
 3. 写 README：支持的动作 id、需要的 LetsCuddle 版本、截图、许可证。
 4. 版本号：`1.0.0` 起；改 manifest 字段就升 minor，改动作数值升 patch；同时把 manifest 的 `content_version` +1（它才是运行时比较的版本，包版本号只是给人看的）。

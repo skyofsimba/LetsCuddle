@@ -70,4 +70,22 @@ class CuddleCapsTest {
         assertTrue(CuddleCaps.EMPTY.compatible());
         assertFalse(new CuddleCaps(3, CuddleConstants.PACK_FORMAT, Map.of()).compatible());
     }
+
+    @Test
+    void displayNamesSurviveSanitize() {
+        CuddleCaps caps = CuddleCaps.sanitize(CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT,
+                Map.of(WARM, new CuddleCaps.Anim(120, "1", "heartpack.animation.warm", "Warm")));
+        CuddleCaps.Anim anim = caps.anim(WARM);
+        assertEquals("heartpack.animation.warm", anim.nameKey());
+        assertEquals("Warm", anim.name());
+    }
+
+    @Test
+    void overlongOrBlankNamesBecomeNull() {
+        CuddleCaps caps = CuddleCaps.sanitize(CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT,
+                Map.of(WARM, new CuddleCaps.Anim(120, "1", "   ", "x".repeat(200))));
+        CuddleCaps.Anim anim = caps.anim(WARM);
+        assertFalse(anim.hasNameKey());
+        assertEquals(CuddleConstants.MAX_NAME_LEN, anim.name().length());
+    }
 }

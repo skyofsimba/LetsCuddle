@@ -1,7 +1,12 @@
 {
   "pack": {
+    "description": "LetsCuddle test pack: invalid id in manifest (must be rejected)",
     "pack_format": 15,
-    "supported_formats": { "min_inclusive": 15, "max_inclusive": 99 },
-    "description": "LetsCuddle test pack: invalid id in manifest (must be rejected)"
+    "supported_formats": {
+      "min_inclusive": 15,
+      "max_inclusive": 75
+    },
+    "min_format": 15,
+    "max_format": 75
   }
 }

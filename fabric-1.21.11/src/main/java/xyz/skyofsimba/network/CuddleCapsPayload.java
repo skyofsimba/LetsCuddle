@@ -11,12 +11,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 客户端能力上报（C2S，包 0）：{@code protocol, format, count, (id, lockTicks, contentVersion) × count}。
+ * 客户端能力上报（C2S，包 0）：
+ * {@code protocol, format, count, (id, lockTicks, contentVersion, nameKey, name) × count}。
+ *
+ * <p>名字随能力一起上报，服务端才能用资源包里的名字发提示（服务端不解析包）。
  */
 public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> entries) implements CustomPayload {
 
-    /** 单条：锁定 tick + 内容版本。 */
-    public record Entry(int lockTicks, String contentVersion) {}
+    /** 单条：锁定 tick、内容版本、显示名。 */
+    public record Entry(int lockTicks, String contentVersion, String nameKey, String name) {
+
+        public Entry(int lockTicks, String contentVersion) {
+            this(lockTicks, contentVersion, "", "");
+        }
+    }
 
     public static final CustomPayload.Id<CuddleCapsPayload> ID =
             new CustomPayload.Id<>(Identifier.of(CuddleConstants.MODID, "caps"));
@@ -34,9 +42,12 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
             if (written++ >= count) {
                 break;
             }
+            Entry value = entry.getValue();
             buf.writeString(entry.getKey(), CuddleConstants.MAX_ANIM_ID_LEN);
-            buf.writeVarInt(entry.getValue().lockTicks());
-            buf.writeString(entry.getValue().contentVersion(), CuddleConstants.MAX_CONTENT_VERSION_LEN);
+            buf.writeVarInt(value.lockTicks());
+            buf.writeString(value.contentVersion(), CuddleConstants.MAX_CONTENT_VERSION_LEN);
+            buf.writeString(value.nameKey(), CuddleConstants.MAX_NAME_KEY_LEN);
+            buf.writeString(value.name(), CuddleConstants.MAX_NAME_LEN);
         }
     }
 
@@ -49,7 +60,9 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
             String id = buf.readString(CuddleConstants.MAX_ANIM_ID_LEN);
             int lock = buf.readVarInt();
             String version = buf.readString(CuddleConstants.MAX_CONTENT_VERSION_LEN);
-            entries.put(id, new Entry(lock, version));
+            String nameKey = buf.readString(CuddleConstants.MAX_NAME_KEY_LEN);
+            String name = buf.readString(CuddleConstants.MAX_NAME_LEN);
+            entries.put(id, new Entry(lock, version, nameKey, name));
         }
         return new CuddleCapsPayload(protocol, format, entries);
     }
@@ -62,8 +75,9 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
     public CuddleCaps toCaps() {
         Map<String, CuddleCaps.Anim> map = new LinkedHashMap<>();
         for (Map.Entry<String, Entry> entry : entries.entrySet()) {
-            map.put(entry.getKey(), new CuddleCaps.Anim(entry.getValue().lockTicks(),
-                    entry.getValue().contentVersion()));
+            Entry value = entry.getValue();
+            map.put(entry.getKey(), new CuddleCaps.Anim(value.lockTicks(), value.contentVersion(),
+                    value.nameKey(), value.name()));
         }
         return CuddleCaps.sanitize(protocol, format, map);
     }
@@ -71,7 +85,10 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
     public static CuddleCapsPayload of(CuddleCaps caps) {
         Map<String, Entry> map = new LinkedHashMap<>();
         for (Map.Entry<String, CuddleCaps.Anim> entry : caps.animations().entrySet()) {
-            map.put(entry.getKey(), new Entry(entry.getValue().lockTicks(), entry.getValue().contentVersion()));
+            CuddleCaps.Anim value = entry.getValue();
+            map.put(entry.getKey(), new Entry(value.lockTicks(), value.contentVersion(),
+                    value.nameKey() == null ? "" : value.nameKey(),
+                    value.name() == null ? "" : value.name()));
         }
         return new CuddleCapsPayload(caps.protocol(), caps.format(), map);
     }

@@ -130,11 +130,11 @@ public final class CuddleCommandHandler {
         String animId = requested;
         if (!receiverCaps.has(requested)) {
             sender.sendMessage(yellow(Text.translatable("letscuddle.message.anim_unavailable",
-                    receiver.getName().getString(), animName(requested))), false);
+                    receiver.getName().getString(), animName(requested, senderCaps))), false);
             animId = CuddleConstants.DEFAULT_ANIM_ID;
         } else if (!senderCaps.sameContent(requested, receiverCaps)) {
             sender.sendMessage(yellow(Text.translatable("letscuddle.message.anim_version_mismatch",
-                    receiver.getName().getString(), animName(requested))), false);
+                    receiver.getName().getString(), animName(requested, senderCaps))), false);
             animId = CuddleConstants.DEFAULT_ANIM_ID;
         }
 
@@ -147,9 +147,9 @@ public final class CuddleCommandHandler {
         REQUESTS.put(key, new CuddleRequest(sender.getUuid(), receiver.getUuid(),
                 server.getTicks() + CuddleConstants.REQUEST_TIMEOUT_TICKS, animId, lockTicks, contentVersion));
 
-        CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId));
+        CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId, senderCaps));
         sender.sendMessage(Text.translatable("letscuddle.message.sendsuccess",
-                receiver.getName().getString(), animName(animId)).formatted(Formatting.GREEN), false);
+                receiver.getName().getString(), animName(animId, senderCaps)).formatted(Formatting.GREEN), false);
         return true;
     }
 
@@ -234,10 +234,18 @@ public final class CuddleCommandHandler {
         return !world.getBlockCollisions(null, box).iterator().hasNext();
     }
 
+    /**
+     * 把玩家按在原地，但**不动视角**。
+     *
+     * <p>1.21 的 {@code teleport} 每 tick 都会把服务端的 yaw/pitch 绝对写回客户端；玩家转视角时
+     * 服务端的值总是慢半拍，于是镜头被反复拽回去（抽搐）。用相对旋转标志 + 0 偏移即可只同步位置。
+     */
+    private static final Set<PositionFlag> KEEP_ROTATION =
+            Set.of(PositionFlag.Y_ROT, PositionFlag.X_ROT);
+
     private static void teleportTo(ServerPlayerEntity player, Vec3d pos) {
         ServerWorld world = (ServerWorld) player.getEntityWorld();
-        player.teleport(world, pos.x, pos.y, pos.z, Set.<PositionFlag>of(),
-                player.getYaw(), player.getPitch(), false);
+        player.teleport(world, pos.x, pos.y, pos.z, KEEP_ROTATION, 0.0F, 0.0F, false);
     }
 
     // ------------------------------------------------------------------ 广播与状态
@@ -392,7 +400,20 @@ public final class CuddleCommandHandler {
         return entity.getEntityWorld() instanceof ServerWorld serverWorld ? serverWorld.getServer() : null;
     }
 
-    private static Text animName(String animId) {
+    /**
+     * 服务端能显示的动作名：优先用客户端上报的 name_key/name（这样资源包里的名字能显示出来），
+     * 其次内置动作走语言键，最后才是 id。
+     */
+    private static Text animName(String animId, CuddleCaps source) {
+        CuddleCaps.Anim anim = source == null ? null : source.anim(animId);
+        if (anim != null) {
+            if (anim.hasNameKey()) {
+                return Text.translatableWithFallback(anim.nameKey(), anim.hasName() ? anim.name() : animId);
+            }
+            if (anim.hasName()) {
+                return Text.literal(anim.name());
+            }
+        }
         String key = CuddleAnimNames.builtinNameKey(animId);
         return key == null ? Text.literal(animId) : Text.translatable(key);
     }
