@@ -88,8 +88,9 @@ public class CuddleTicketItem extends Item {
         if (!player.level().isClientSide
                 && player instanceof ServerPlayer serverPlayer
                 && targetPlayer instanceof ServerPlayer serverTarget) {
-            CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, getSelectedAnimation(stack));
-            stack.shrink(1);
+            if (CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, getSelectedAnimation(stack))) {
+                stack.shrink(1);
+            }
         }
         // 发起失败也返回 sidedSuccess（KEEP K16）：客户端照常播挥手动画
         return InteractionResult.sidedSuccess(player.level().isClientSide);

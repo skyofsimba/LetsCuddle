@@ -82,8 +82,9 @@ public class CuddleTicketItem extends Item {
             return ActionResult.SUCCESS;
         }
         if (player instanceof ServerPlayerEntity serverPlayer && target instanceof ServerPlayerEntity serverTarget) {
-            CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, getSelectedAnimation(stack));
-            stack.decrement(1);
+            if (CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, getSelectedAnimation(stack))) {
+                stack.decrement(1);
+            }
         }
         // 发起失败也返回 SUCCESS（KEEP K16）：客户端照常播挥手动画
         return ActionResult.SUCCESS;
