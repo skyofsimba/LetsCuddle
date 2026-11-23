@@ -41,8 +41,8 @@ public final class CuddlePalBridge {
     /** 每个客户端玩家创建一次动画层。 */
     public static void registerFactory() {
         if (!AVAILABLE) {
-            Letscuddle.LOGGER.warn("LetsCuddle: {} is not installed; cuddle animations will not play on 1.21.11",
-                    PAL_MOD_ID);
+            Letscuddle.LOGGER.error("LetsCuddle: {} is not installed - cuddles will work but nobody will move. "
+                    + "Install Player Animation Library for 1.21.11 on the CLIENT.", PAL_MOD_ID);
             return;
         }
         PlayerAnimationFactory.ANIMATION_DATA_FACTORY.registerFactory(LAYER_ID, 42, player -> {
