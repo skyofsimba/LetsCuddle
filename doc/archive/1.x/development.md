@@ -1,6 +1,6 @@
 # 开发说明
 
-面向接手维护的人。版本历史见 [`../CHANGELOG.md`](../CHANGELOG.md)。
+面向接手维护的人。版本历史见 [`../../../CHANGELOG.md`](../../../CHANGELOG.md)。
 
 ## 环境
 
