@@ -10,6 +10,10 @@ Players can cuddle with each other.
 你需要安装 [PlayerAnimator 模组](https://modrinth.com/mod/playeranimator) 作为前置！
 You need [PlayerAnimator Mod](https://modrinth.com/mod/playeranimator) installed to use this mod!
 
+> **2.0 开发中**：跨版本（1.20.1 Forge + 1.21.11 Fabric）+ 动作包外置（资源包动态加载 / F3+T 热重载）。
+> 计划：[doc/2.0.0-beta1-plan.md](doc/2.0.0-beta1-plan.md)；
+> 做动作包：[doc/animation-pack-authoring.md](doc/animation-pack-authoring.md)。
+
 > English version below · [中文](#中文) | [English](#english)
 
 ---
@@ -20,7 +24,7 @@ You need [PlayerAnimator Mod](https://modrinth.com/mod/playeranimator) installed
 
 ```bash
 git clone https://github.com/skyofsimba/LetsCuddle.git
-cd LetsCuddle
+cd LetsCuddle/LetsCuddle  # 1.x 的构建目录；2.0 起改为 LetsCuddle/forge-1.20.1
 ./gradlew build          # Windows: gradlew.bat build
 # 产物：build/libs/letscuddle-<版本>.jar（已 reobf，可直接发布）
 ```
@@ -58,7 +62,7 @@ cd LetsCuddle
 
 ```bash
 git clone https://github.com/skyofsimba/LetsCuddle.git
-cd LetsCuddle
+cd LetsCuddle/LetsCuddle  # 1.x build dir; becomes LetsCuddle/forge-1.20.1 in 2.0
 ./gradlew build          # Windows: gradlew.bat build
 # output: build/libs/letscuddle-<version>.jar (reobfuscated, ready to ship)
 ```

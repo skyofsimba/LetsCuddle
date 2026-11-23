@@ -1,6 +1,24 @@
 # 更新日志 · Changelog
 
-本项目的版本号跟随模组自身功能演进；Forge 1.20.1 为固定目标平台。
+本项目的版本号跟随模组自身功能演进。1.x 为 1.20.1 Forge；2.0 起同时支持 1.20.1 Forge 与 1.21.11 Fabric。
+
+## [Unreleased] — 2.0.0-beta1（计划中，未发布）
+
+> 规划与验收见 [doc/2.0.0-beta1-plan.md](doc/2.0.0-beta1-plan.md)；动作包格式见 [doc/animation-pack-format.md](doc/animation-pack-format.md)。
+> 以下为**计划**，发布时按实际情况改写。
+
+### 将新增
+- 跨版本：1.20.1 Forge + 1.21.11 Fabric（1.21.1 NeoForge 视情况）。
+- 动作包外置：资源包里的 `cuddle_animations` manifest、F3+T 热重载、能力协商、内置包回退。
+- 动作包格式规范与制作指南。
+
+### 将变更（破坏性）
+- 网络协议 `3 → 4`；2.0 与 1.x 的客户端/服务端不能互连。
+- 动作选择由枚举改为数据驱动 id；旧 NBT `normal` / `touch_head` 自动迁移。
+- 1.21.11 的渲染/相机实现与 1.20.1 不同（1.20.1 行为保持不变）。
+
+### 计划中不包含
+- 26.x、GeckoLib、动作选择 GUI、服务端资源包分发、新玩法。
 
 ## 1.6.0 — 2026-11-21
 
@@ -64,7 +82,7 @@
 
 ## 1.3 — 2026-11-20
 
-首个 **Minecraft 1.20.1 / Forge** 移植版，按 `doc/port-plan.md` 做 1:1 语义迁移。
+首个 **Minecraft 1.20.1 / Forge** 移植版，按 `doc/archive/1.x/port-plan.md` 做 1:1 语义迁移。
 
 **移植修复**（相对原 NeoForge 1.21 版本）
 - K1/K2：60 秒请求过期从调度线程池改为服务端 tick 计时（顺带消除永不关闭的非守护线程池）
