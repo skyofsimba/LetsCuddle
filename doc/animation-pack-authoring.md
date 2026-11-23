@@ -62,9 +62,9 @@ assets/<你的命名空间>/
 |---|---|---|
 | **A. 复制内置 JSON 手改**（推荐给第一次做的人） | 会看数字、想做小改动 | 没有可视化，但**一定能被 1.20.1 的 playerAnimator 加载** |
 | **B. Blockbench + Emotecraft 插件** | 想要可视化摆姿势 | 导出结构要与内置 JSON 对齐（`emote`/`moves`/`degrees`），导出后按 §4 检查 |
-| **C. 别的格式（GeckoLib / Bedrock / Bedrock 模型动画）** | — | **不支持**：两个平台都只认 PlayerAnimator/Emotecraft 的 `emote` JSON，导错了不会报错、只是不播 |
+| **C. Blockbench / GeckoLib / Bedrock 格式** | 只做 1.21.11 | PAL 能读（`animations` 结构），但 **1.20.1 的 playerAnimator 读不了**；跨版本包不要用 |
 
-> 两个平台读同一份文件：1.20.1 交给 playerAnimator，1.21.11 交给模组内置采样器。
+> 两个平台读同一份文件：1.20.1 交给 playerAnimator，1.21.11 交给 PAL。
 > 两条路径都按同一套 `emote` 语义解析（首帧前插值、两帧之间用前一帧缓动、`stopTick` 回落），所以 **A 是唯一有保证的路径**。
 
 ### 3.2 建议的准备
@@ -236,7 +236,7 @@ assets/heartpack/
 ## 8. 常见问题
 
 **Q：我能用 GeckoLib 的动画吗？**
-A：不能。两个平台都只解析 PlayerAnimator/Emotecraft 的 `emote` JSON；Blockbench 的 Emotecraft 插件导出的就是这种格式。
+A：可以，但只在 1.21.11 上（PAL 能读 GeckoLib/Bedrock 的 `animations` 结构）；1.20.1 的 playerAnimator 只认 PlayerAnimator/Emotecraft 的 `emote` JSON。要做**跨版本**包，用 Blockbench 的 Emotecraft 插件导出 `emote` 格式。
 
 **Q：能加音效/粒子吗？**
 A：v1 不支持；manifest 里没有对应字段，加了也会被忽略。

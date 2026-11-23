@@ -24,7 +24,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
       │  └─ <path>.json                 ← manifest；动作 id = <namespace>:<path>
       ├─ player_animation/              ← 1.20.1 的 playerAnimator 读取
       │  └─ <file>.json                 ← 动画 id = 文件内 "name" 字段（推荐 <namespace>:<name>）
-      └─ player_animations/             ← 1.21.11 由模组内置播放器读取
+      └─ player_animations/             ← 1.21.11 的 PAL 读取
          └─ <file>.json
 ```
 
@@ -95,7 +95,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 `sender` / `receiver` 指向的 id，必须能被对应平台的动画库解析：
 
 - 1.20.1：`assets/<ns>/player_animation/<file>.json`，文件里的 `"name"` 就是 id 的 path 部分。
-- 1.21.11：`assets/<ns>/player_animations/<file>.json`，同上（目录名是 1.21 线动画库的约定，模组照此读取）。
+- 1.21.11：`assets/<ns>/player_animations/<file>.json`，同上（PAL 的约定目录）。
 
 动画 JSON 的硬性要求（来自 1.x 的实测，见 [original-design §9](archive/1.x/original-design.md)）：
 
@@ -155,7 +155,7 @@ LetsCuddle 在客户端扫描所有资源包，把 manifest 变成可选动作�
 | 旁观者 | 必须 | 可选 | 没有包或版本不同 → 本地回退内置默认动作 |
 
 - 不装任何动作包：内置 `letscuddle:normal` / `letscuddle:touch_head` 可用。
-- 客户端：1.20.1 需要 playerAnimator（`mods.toml` 的 `side=CLIENT`）；1.21.11 **不需要**任何动画库（模组内置播放器）。**服务端两版都不需要**。
+- 客户端：1.20.1 需要 playerAnimator（`mods.toml` 的 `side=CLIENT`），1.21.11 需要 PAL（`fabric.mod.json` 的 `suggests`；没装也能贴贴，只是不动）。**服务端两版都不需要**。
 - 包的分发不由模组负责：整合包、服务器 `resource-pack=`、手动放进 `resourcepacks/` 都可以；模组不会主动下发。
 - 服务端**无法**校验包内容，只能校验客户端上报的 id / content_version / lock_ticks；所以"两人同包同版本"是玩家侧的要求。
 

@@ -19,16 +19,16 @@ Players can cuddle with each other.
 | 构建 | Minecraft | 加载器 | 需要的前置 | 产物 |
 |---|---|---|---|---|
 | `forge-1.20.1` | 1.20.1 | Forge 47.4.29 | **playerAnimator**（客户端，1.0.2-rc1+1.20） | `letscuddle-1.20.1-forge-<版本>.jar` |
-| `fabric-1.21.11` | 1.21.11 | Fabric Loader 0.19.5 + Fabric API | 无（动画由模组自己播） | `letscuddle-1.21.11-fabric-<版本>.jar` |
+| `fabric-1.21.11` | 1.21.11 | Fabric Loader 0.19.5 + Fabric API | **PAL**（Player Animation Library，客户端） | `letscuddle-1.21.11-fabric-<版本>.jar` |
 
-- 专用服务端**不需要**装动画库：1.20.1 的依赖声明是 `side=CLIENT`，1.21.11 根本没有动画库依赖。
+- 专用服务端**不需要**装动画库：1.20.1 的依赖声明是 `side=CLIENT`，1.21.11 的 PAL 只是客户端建议依赖（`suggests`）。
 - 1.x（协议 3）与 2.0（协议 4）**不能互连**，两端必须同为 1.x 或同为 2.0。
 - 1.21.1 NeoForge、26.x 不在 2.0 范围内，见 [计划 §2](doc/2.0.0-beta1-plan.md)。
 
 ### 安装
 
 1. 把对应平台的 jar 放进 `mods/`。
-2. 1.20.1 再放一个 [playerAnimator](https://modrinth.com/mod/playeranimator)。
+2. 1.20.1 再放一个 [playerAnimator](https://modrinth.com/mod/playeranimator)；1.21.11 再放一个 [PAL](https://modrinth.com/mod/player-animation-library)（不装也能贴贴，只是不动）。
 3. 客户端与服务端装同一个版本。
 
 ### 玩法
@@ -75,7 +75,8 @@ cd forge-1.20.1 && ./gradlew test
 ### 致谢与许可
 
 - 原版模组 **HugMe**：TuYw（[TunYuntuwuQWQ](https://github.com/TunYuntuwuQWQ)），MIT
-- 动作库 **playerAnimator**：[KosmX](https://github.com/KosmX)，MIT（仅 1.20.1 使用）
+- 动作库 **playerAnimator**：[KosmX](https://github.com/KosmX)，MIT（1.20.1 使用）
+- 动作库 **PAL**：[Zigy](https://github.com/ZigyTheBird/PlayerAnimationLibrary)，MIT（1.21.11 使用）
 - 1.20.1 Forge 移植：小狮子辛巴 / skyofsimba
 - 本仓库代码与资源以 **MIT** 发布，版权声明见 [LICENSE](LICENSE)
 
@@ -90,7 +91,7 @@ cd forge-1.20.1 && ./gradlew test
 | Build | Minecraft | Loader | Required mods | Artifact |
 |---|---|---|---|---|
 | `forge-1.20.1` | 1.20.1 | Forge 47.4.29 | **playerAnimator** (client, 1.0.2-rc1+1.20) | `letscuddle-1.20.1-forge-<version>.jar` |
-| `fabric-1.21.11` | 1.21.11 | Fabric Loader 0.19.5 + Fabric API | none | `letscuddle-1.21.11-fabric-<version>.jar` |
+| `fabric-1.21.11` | 1.21.11 | Fabric Loader 0.19.5 + Fabric API | **PAL** (Player Animation Library, client) | `letscuddle-1.21.11-fabric-<version>.jar` |
 
 Dedicated servers need **no** animation library on either platform. Protocol 3 (1.x) and protocol 4 (2.0) cannot
 talk to each other; both sides must run the same major version.
@@ -98,7 +99,7 @@ talk to each other; both sides must run the same major version.
 ### Install
 
 1. Drop the jar for your platform into `mods/`.
-2. On 1.20.1 also install [playerAnimator](https://modrinth.com/mod/playeranimator).
+2. Also install [playerAnimator](https://modrinth.com/mod/playeranimator) on 1.20.1, or [PAL](https://modrinth.com/mod/player-animation-library) on 1.21.11 (without it the cuddle still works, it just does not animate).
 3. Keep client and server on the same version.
 
 ### Usage
@@ -135,7 +136,8 @@ Run the unit tests with `cd forge-1.20.1 && ./gradlew test`.
 ### Credits & License
 
 - Original mod **HugMe** by TuYw ([TunYuntuwuQWQ](https://github.com/TunYuntuwuQWQ)), MIT
-- **playerAnimator** by [KosmX](https://github.com/KosmX), MIT (1.20.1 only)
+- **playerAnimator** by [KosmX](https://github.com/KosmX), MIT (1.20.1)
+- **PAL** by [Zigy](https://github.com/ZigyTheBird/PlayerAnimationLibrary), MIT (1.21.11)
 - 1.20.1 Forge port by 小狮子辛巴 / skyofsimba
 - Code and assets in this repository are licensed under **MIT** — see [LICENSE](LICENSE)
 

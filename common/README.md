@@ -9,7 +9,8 @@
 - 常量、协议号、动作包格式号；
 - 纯数学（落点/站位）与纯数据模型（`CuddleAnimDef`、`CuddleCaps`）；
 - 动作 id 的校验/规范化/legacy 迁移；
-- manifest 与动画 JSON 的解析、采样。
+- manifest 与动画 JSON 的解析、采样（动画本身由平台侧库播放：1.20.1 playerAnimator、1.21.11 PAL；
+  这里的采样只用来算第三人称镜头要跟随的 body 位移）。
 
 不可以放：
 
