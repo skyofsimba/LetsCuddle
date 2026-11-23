@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "content_version": "1",
+  "sender": "heartpack:warm_sender",
+  "receiver": "heartpack:warm_receiver",
+  "name_key": "heartpack.animation.warm",
+  "name": "Warm",
+  "speed": 0.5,
+  "lock_ticks": 120,
+  "order": 10
+}

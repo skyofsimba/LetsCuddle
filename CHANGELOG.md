@@ -1,27 +1,63 @@
 # 更新日志 · Changelog
 
 本项目的版本号跟随模组自身功能演进。1.x 为 1.20.1 Forge；2.0 起同时支持 1.20.1 Forge 与 1.21.11 Fabric。
+格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [Unreleased] — 2.0.0-beta1（计划中，未发布）
+## [2.0.0-beta1] — 2026-11-23
 
-> 规划与验收见 [doc/2.0.0-beta1-plan.md](doc/2.0.0-beta1-plan.md)；动作包格式见 [doc/animation-pack-format.md](doc/animation-pack-format.md)。
-> 以下为**计划**，发布时按实际情况改写。
+> 计划与验收见 [doc/2.0.0-beta1-plan.md](doc/2.0.0-beta1-plan.md)；动作包格式见
+> [doc/animation-pack-format.md](doc/animation-pack-format.md)；做包见
+> [doc/animation-pack-authoring.md](doc/animation-pack-authoring.md)。
 
-### 将新增
-- 跨版本：1.20.1 Forge + 1.21.11 Fabric（明确不做 1.21.1 NeoForge）。
-- 动作包外置：资源包里的 `cuddle_animations` manifest、F3+T 热重载、能力协商、内置包回退。
-- 动作包 `content_version` 一致性检查：两端版本不同时回退内置默认动作，避免「同 id 不同动作」。
-- 动作包格式规范与制作指南。
+### Added
 
-### 将变更（破坏性）
-- 网络协议 `3 → 4`；2.0 与 1.x 的客户端/服务端不能互连。
-- 动作选择由枚举改为数据驱动 id；旧 NBT `normal` / `touch_head` 自动迁移。
-- 1.21.11 的渲染/相机实现与 1.20.1 不同（1.20.1 行为保持不变）。
+- **跨版本**：同一份 `common/` 源码产出 `letscuddle-1.20.1-forge-*.jar` 与
+  `letscuddle-1.21.11-fabric-*.jar`（1.21.1 NeoForge 明确不做）。
+- **动作包外置**：动作来自资源包（`assets/<ns>/cuddle_animations/*.json` manifest），
+  客户端扫描所有资源包构建注册表，**F3+T 热重载**；内置两个动作作为 jar 内最低优先级包。
+- **服务端能力握手**：协议 v4 的 `RequestCaps` / `Caps` / `Select` / `Selected` 四个新包；
+  服务端只保存每个客户端上报的「id → 锁定时间 + 内容版本」，不解析包。
+- **回退规则**：接受者没有该动作、或两端 `content_version` 不一致 → 回退内置默认动作并提示发起者；
+  旁观者缺包时本地回退；锁定时间取双方最小值。
+- **1.21.11 渲染**：不取消原版渲染，用 mixin 在原版玩家渲染链上叠加朝向、前压与骨骼姿势，
+  皮肤 / 盔甲 / 手持物 / 披风全部保留；第三人称镜头跟随模型偏移。
+- **文档**：2.0 计划、动作包格式 v1、制作指南、`test-packs/` 示例包；1.x 文档归档到
+  `doc/archive/1.x/`。
 
-### 计划中不包含
-- 26.x、GeckoLib、动作选择 GUI、服务端资源包分发、新玩法。
+### Changed
 
-## 1.6.0 — 2026-11-21
+- 动作选择由客户端发起（只有客户端知道自己装了哪些包），服务端校验后写入物品。
+- 动作 id 全程字符串（`letscuddle:normal`）；旧的短 id（`normal` / `touch_head`）在读取时自动迁移，
+  旧存档里的贴贴券继续可用。
+- 1.20.1 的动作播放速度改由 manifest 的 `speed` 决定（内置仍是 0.5×），不再写死在代码里。
+- 仓库布局改为 `forge-1.20.1/` + `fabric-1.21.11/` + `common/`；CI 拆成两个 job。
+
+### Removed
+
+- `CuddleAnimationEnum`（动作两选一的枚举）与写死在 jar 里的硬编码动作映射。
+- 对 PAL（Player Animation Library）的依赖计划：1.21.11 改为模组内置的采样器
+  （`common/CuddleAnimClip`），因此 1.21.11 客户端**不需要**任何动画库。
+
+### Fixed
+
+- 1.21.11 首次进入存档发券、创造栏、配方、物品模型（1.21.4+ 的 `items/` 模型定义）全部补齐。
+- 1.x 的 PORT-FIX 全部保留：过期在主线程 tick、先校验后播「已接受」、重合退化、掉线立刻清理。
+
+### Breaking
+
+- **网络协议 3 → 4**：2.0 与 1.x 的客户端/服务端不能互连（Forge 通道版本会直接拒绝；
+  Fabric 用能力包里的 `protocol` 判断并按「只有内置动作」处理）。
+- 动作 id 从短 id 变为完整 id；自定义资源包里的 `player_animation/*.json` 仍然有效，
+  但想让它出现在选择列表里需要一个 manifest。
+
+### 已知差异（1.21.11 vs 1.20.1）
+
+- 1.20.1 由 playerAnimator 驱动动作；1.21.11 用模组内置采样器按同一份 JSON 逐 tick 复刻
+  （语义对齐 playerAnimator 1.0.2，见 `doc/2.0.0-beta1-plan.md` §8.4）。
+- 接管期间隐藏名字牌与阴影（模型被推离实体坐标约 1 格）；模型高度与 1.20.1 一样是 2.0 格。
+- 1.21.11 没有「通道版本」概念，旧客户端不会被拒绝，只会被当成「只有内置动作」。
+
+## [1.6.0] — 2026-11-21
 
 **破坏性改名：`hug` → `cuddle`（抱抱 → 贴贴）**
 
@@ -42,7 +78,7 @@
 被移除（不会崩服、不会坏档，只会静默消失）。进行中的请求与贴贴状态只存在内存里，重启服务端即清空。
 另外，如果服务器上的商店/菜单/数据包引用了 `letscuddle:hug_ticket`，请同步改成 `letscuddle:cuddle_ticket`。
 
-## 1.5.1 — 2026-11-21
+## [1.5.1] — 2026-11-21
 
 **修复**
 - 拥抱时第三人称镜头不以拥抱为中心（两人跑到画面外/侧边）：
@@ -55,7 +91,7 @@
 - 新增 `src/main/resources/META-INF/accesstransformer.cfg`（SRG 名 `m_90581_`），并在 `build.gradle`
   启用 `accessTransformer`。首次构建会重新生成 AT 过的 Forge 工件（约 1 分钟）。
 
-## 1.5 — 2026-11-21
+## [1.5] — 2026-11-21
 
 **新增**
 - 拥抱动作由发起者自选：抱抱券用 NBT 记住所选动作，`潜行 + 右键`（空中或玩家身上）循环切换，
@@ -66,7 +102,7 @@
 - 动作在网络上的表示由枚举序号（`ordinal`）改为稳定字符串 id（`normal` / `touch_head`），
   协议号 `2 → 3`；以后新增动作不再依赖枚举顺序（解决 K18）。
 
-## 1.4 — 2026-11-21
+## [1.4] — 2026-11-21
 
 **新增**
 - 拥抱开始时当事人自动切第三人称；拥抱期间玩家自己按 `F5` 改过视角的，结束后尊重玩家选择。
@@ -81,7 +117,7 @@
 **变更**
 - 网络包增加 `cancelled` 字段，协议号 `1 → 2`。
 
-## 1.3 — 2026-11-20
+## [1.3] — 2026-11-20
 
 首个 **Minecraft 1.20.1 / Forge** 移植版，按 `doc/archive/1.x/port-plan.md` 做 1:1 语义迁移。
 

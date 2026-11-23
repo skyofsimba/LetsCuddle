@@ -2,7 +2,7 @@
 
 > 面向：想给 LetsCuddle 做动作包的作者（会一点 Blockbench 或愿意手改 JSON 即可）。
 > 配套：[动作包格式 v1](animation-pack-format.md)（字段的权威定义）· [2.0.0-beta1 计划](2.0.0-beta1-plan.md) · [1.x 动作数据规格](archive/1.x/original-design.md)
-> 状态：beta1 草稿。工具链部分会随 P2 的实测更新；**格式与验收标准已经冻结**。
+> 状态：2.0.0-beta1 定稿。工具链结论来自 2.0 的实测与源码比对；**格式与验收标准已经冻结**。
 
 ---
 
@@ -62,10 +62,10 @@ assets/<你的命名空间>/
 |---|---|---|
 | **A. 复制内置 JSON 手改**（推荐给第一次做的人） | 会看数字、想做小改动 | 没有可视化，但**一定能被 1.20.1 的 playerAnimator 加载** |
 | **B. Blockbench + Emotecraft 插件** | 想要可视化摆姿势 | 导出结构要与内置 JSON 对齐（`emote`/`moves`/`degrees`），导出后按 §4 检查 |
-| **C. Blockbench + GeckoLib/Bedrock 格式** | 只做 1.21.11 | PAL 能读 GeckoLib/Bedrock 格式；但 **1.20.1 的 playerAnimator 读不了**，跨版本包不要用 |
+| **C. 别的格式（GeckoLib / Bedrock / Bedrock 模型动画）** | — | **不支持**：两个平台都只认 PlayerAnimator/Emotecraft 的 `emote` JSON，导错了不会报错、只是不播 |
 
-> 工具链的最终结论由 P2 的实测确定：用内置四份 JSON 在 1.20.1 + 1.21.11 上各跑一遍，确认"同一份文件两边都能加载"。
-> 在此之前，**A 是唯一有保证的路径**。
+> 两个平台读同一份文件：1.20.1 交给 playerAnimator，1.21.11 交给模组内置采样器。
+> 两条路径都按同一套 `emote` 语义解析（首帧前插值、两帧之间用前一帧缓动、`stopTick` 回落），所以 **A 是唯一有保证的路径**。
 
 ### 3.2 建议的准备
 
@@ -188,12 +188,12 @@ assets/heartpack/
 | 只有一方动 | 只做了 sender 或 receiver | 两段都要 |
 | 一方看到 A、另一方看到 B | 两端包版本不同，或改了动作没 bump `content_version` | 让两人装同一个包；改动作就 +1 |
 | 两人之间空 1 格 | `torso.z` 是 0，或加了 `"version"` 导致 `torso` 不再是根节点 | 用 `torso.z=-1.0`，删掉 `version` |
-| 位移大了 16 倍 | 用了 PAL 的"像素"语义去写 PlayerAnimator 格式 | 1.20.1/PlayerAnimator 格式用**米**；跨版本时以 P7 的数值对比为准 |
+| 位移大了 16 倍 | 用了"像素"语义去写 PlayerAnimator 格式 | 本格式的位移单位是**米**，`0.0625` 才是 1 像素 |
 | 动作被硬切 | `lock_ticks` 小于实际时长 | 调到 `stopTick / speed` 附近 |
 | 结束后保持最后一帧 | `lock_ticks` 远大于动作时长 | 同上 |
 | 两人脸对脸但姿势错位 | 用了 `turn` 或整体位移去调朝向 | 朝向由代码处理；只用骨骼旋转与 `torso.z` |
 | 1.20.1 能播、1.21.11 不能 | 文件只放了 `player_animation/` | 再放一份到 `player_animations/` |
-| 1.21.11 能播、1.20.1 不能 | 用了 GeckoLib/Bedrock 格式 | 1.20.1 只认 PlayerAnimator/Emotecraft 的 JSON |
+| 1.21.11 能播、1.20.1 不能 | 文件只放了 `player_animations/` | 再放一份到 `player_animation/`（内容相同） |
 | 重载后动作消失 | 包被移出/改坏，注册表回退 | 看日志；修好后 F3+T |
 
 ### 5.1 没有"眼睛"时怎么调
@@ -236,7 +236,7 @@ assets/heartpack/
 ## 8. 常见问题
 
 **Q：我能用 GeckoLib 的动画吗？**
-A：1.21.11 的 PAL 可以读 Blockbench/GeckoLib/Bedrock 格式；1.20.1 的 playerAnimator 不行。要做**跨版本**包，用 PlayerAnimator/Emotecraft 的 `emote` JSON。
+A：不能。两个平台都只解析 PlayerAnimator/Emotecraft 的 `emote` JSON；Blockbench 的 Emotecraft 插件导出的就是这种格式。
 
 **Q：能加音效/粒子吗？**
 A：v1 不支持；manifest 里没有对应字段，加了也会被忽略。

@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "sender": "brokenpack:ghost_sender",
+  "receiver": "brokenpack:ghost_receiver",
+  "name": "Ghost",
+  "lock_ticks": 120
+}
