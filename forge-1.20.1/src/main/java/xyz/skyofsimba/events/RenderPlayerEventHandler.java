@@ -26,6 +26,7 @@ import net.minecraftforge.fml.common.Mod;
 import org.joml.Quaternionf;
 import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.client.CuddleCameraHandler;
+import xyz.skyofsimba.core.CuddleConstants;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,7 +64,7 @@ import java.util.UUID;
 public final class RenderPlayerEventHandler {
 
     /** PORT-FIX K9 客户端兜底：服务端结束包丢失时，最多锁这么久（tick）。 */
-    private static final long LOCK_TIMEOUT_TICKS = 200L;
+    private static final long LOCK_TIMEOUT_TICKS = CuddleConstants.CLIENT_LOCK_FALLBACK_TICKS;
 
     private static final Map<UUID, Lock> LOCKS = new HashMap<>();
 
