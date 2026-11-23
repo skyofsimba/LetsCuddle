@@ -46,8 +46,8 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
             buf.writeString(entry.getKey(), CuddleConstants.MAX_ANIM_ID_LEN);
             buf.writeVarInt(value.lockTicks());
             buf.writeString(value.contentVersion(), CuddleConstants.MAX_CONTENT_VERSION_LEN);
-            buf.writeString(value.nameKey(), CuddleConstants.MAX_NAME_KEY_LEN);
-            buf.writeString(value.name(), CuddleConstants.MAX_NAME_LEN);
+            buf.writeString(nullToEmpty(value.nameKey()), CuddleConstants.MAX_NAME_KEY_LEN);
+            buf.writeString(nullToEmpty(value.name()), CuddleConstants.MAX_NAME_LEN);
         }
     }
 
@@ -87,9 +87,12 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
         for (Map.Entry<String, CuddleCaps.Anim> entry : caps.animations().entrySet()) {
             CuddleCaps.Anim value = entry.getValue();
             map.put(entry.getKey(), new Entry(value.lockTicks(), value.contentVersion(),
-                    value.nameKey() == null ? "" : value.nameKey(),
-                    value.name() == null ? "" : value.name()));
+                    nullToEmpty(value.nameKey()), nullToEmpty(value.name())));
         }
         return new CuddleCapsPayload(caps.protocol(), caps.format(), map);
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

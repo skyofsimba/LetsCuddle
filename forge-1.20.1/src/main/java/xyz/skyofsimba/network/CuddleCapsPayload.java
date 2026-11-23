@@ -39,8 +39,8 @@ public record CuddleCapsPayload(int protocol, int format, Map<String, Entry> ent
             buf.writeUtf(entry.getKey(), CuddleConstants.MAX_ANIM_ID_LEN);
             buf.writeVarInt(value.lockTicks());
             buf.writeUtf(value.contentVersion(), CuddleConstants.MAX_CONTENT_VERSION_LEN);
-            buf.writeUtf(value.nameKey(), CuddleConstants.MAX_NAME_KEY_LEN);
-            buf.writeUtf(value.name(), CuddleConstants.MAX_NAME_LEN);
+            buf.writeUtf(nullToEmpty(value.nameKey()), CuddleConstants.MAX_NAME_KEY_LEN);
+            buf.writeUtf(nullToEmpty(value.name()), CuddleConstants.MAX_NAME_LEN);
         }
     }
 
