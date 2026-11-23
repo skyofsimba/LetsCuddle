@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PBP",
+    "PIP",
+    "PBP"
+  ],
+  "key": {
+    "P": "minecraft:paper",
+    "B": "minecraft:light_blue_dye",
+    "I": "minecraft:pink_dye"
+  },
+  "result": {
+    "id": "letscuddle:cuddle_ticket",
+    "count": 4
+  }
+}

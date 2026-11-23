@@ -2,7 +2,12 @@
   "required": true,
   "package": "xyz.skyofsimba.mixin.client",
   "compatibilityLevel": "JAVA_21",
-  "client": [],
+  "client": [
+    "CameraMixin",
+    "EntityRendererMixin",
+    "PlayerEntityModelMixin",
+    "PlayerEntityRendererMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
