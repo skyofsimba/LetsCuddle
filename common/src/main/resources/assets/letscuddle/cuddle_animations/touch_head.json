@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "content_version": "1",
+  "sender": "letscuddle:cuddle_touch_sender",
+  "receiver": "letscuddle:cuddle_touch_receiver",
+  "name_key": "letscuddle.animation.touch_head",
+  "name": "Head-pat cuddle",
+  "speed": 0.5,
+  "lock_ticks": 120,
+  "order": 10
+}

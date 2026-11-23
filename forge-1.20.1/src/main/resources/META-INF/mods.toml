@@ -9,7 +9,7 @@ version = "${mod_version}"
 displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
-logoFile = "cuddle_ticket.png"
+logoFile = "assets/letscuddle/textures/item/cuddle_ticket.png"
 # 模组列表里的「网站」按钮（Modrinth 发布也用这个链接）
 displayURL = "https://space.bilibili.com/350703330"
 

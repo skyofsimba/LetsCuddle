@@ -19,7 +19,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import xyz.skyofsimba.Letscuddle;
-import xyz.skyofsimba.animation.CuddleAnimationEnum;
+import xyz.skyofsimba.core.CuddleAnimNames;
+import xyz.skyofsimba.core.CuddleCaps;
+import xyz.skyofsimba.core.CuddleConstants;
+import xyz.skyofsimba.core.CuddleIds;
+import xyz.skyofsimba.core.CuddlePlacement;
+import xyz.skyofsimba.core.Vec3d;
+import xyz.skyofsimba.network.CuddleCapsStore;
 import xyz.skyofsimba.network.CuddleNetwork;
 import xyz.skyofsimba.network.CuddleRenderPayload;
 
@@ -31,33 +37,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 服务端状态机：请求 → 接受/拒绝 → 120 tick 锁定 → 解锁。
+ * 服务端状态机：请求 → 接受/拒绝 → 锁定 → 解锁。
  *
- * <p>与原实现的差异全部是 port-plan 8.1 的 PORT-FIX：
- * <ul>
- *   <li>K1/K2：删掉 {@code ScheduledExecutorService}，请求带 {@code expireAt}，在 ServerTickEvent 里扫（不再有跨线程访问与永不关闭的线程池）；</li>
- *   <li>K3：「已接受」消息移到站位校验之后，站不住时只会收到「无法站立」；</li>
- *   <li>K5：两人 XZ 完全重合时落点返回 null，走「无法站立」分支而不是 NaN；</li>
- *   <li>K9：掉线立刻清理并广播结束包（客户端另有 200 tick 兜底）；</li>
- *   <li>K11：去掉恒真的 {@code active} 字段，结束/掉线统一走 {@link #broadcastCuddleEnd}；</li>
- *   <li>K13：校验请求的接收者确实是执行命令的人。</li>
- * </ul>
- *
- * <p>KEEP（明确不改）：落点方向（K4）、1.3 格间距、120 tick、60 秒、64 格广播、有序 Pair 键（K12）、状态不持久化（K17）。
+ * <p>1.x 的 PORT-FIX 全部保留：过期在主线程 tick（K1/K2）、先校验后播「已接受」（K3）、
+ * 重合退化为无法站立（K5）、掉线立刻清理（K9）、结束走同一条广播路径（K11）、
+ * 校验请求接收者（K13）。2.0 新增动作 id 字符串化与能力回退（§6.3）。
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class CuddleCommandHandler {
-
-    /** 请求 60 秒后过期。 */
-    private static final long REQUEST_TIMEOUT_TICKS = 20L * 60L;
-    /** 贴贴锁定 6 秒。 */
-    private static final int ANIM_TICKS = 20 * 6;
-    /** v1.4：蹲下提前结束需要按住这么多 tick（0.25 s），防误触。 */
-    private static final int SNEAK_CANCEL_TICKS = 5;
-    private static final double MAX_DISTANCE = 5.0D;
-    private static final double NEARBY_RADIUS = 64.0D;
-    private static final double STAND_OFFSET = 1.3D;
-    private static final double STAND_HALF_WIDTH = 0.3D;
 
     private static final Map<Pair<UUID, UUID>, CuddleRequest> REQUESTS = new ConcurrentHashMap<>();
     private static final Map<Pair<UUID, UUID>, CuddleStatus> CUDDLES = new ConcurrentHashMap<>();
@@ -67,12 +54,12 @@ public final class CuddleCommandHandler {
     // ------------------------------------------------------------------ 状态对象
 
     /**
-     * @param senderId   发起者
-     * @param receiverId 接受者
-     * @param expireAt   过期时刻（服务端 tick 计数，PORT-FIX K1/K2）
-     * @param animation  v1.5：发起者在券上选的动作，接受时按它播放（不再服务端随机）
+     * @param animId         最终生效的动作 id（已按双方能力回退过）
+     * @param lockTicks      锁定 tick（双方 lock_ticks 取小后夹紧）
+     * @param contentVersion 发起者侧该动作的内容版本，随广播下发供旁观者比对
      */
-    public record CuddleRequest(UUID senderId, UUID receiverId, long expireAt, CuddleAnimationEnum animation) {}
+    public record CuddleRequest(UUID senderId, UUID receiverId, long expireAt,
+                                String animId, int lockTicks, String contentVersion) {}
 
     private static final class CuddleStatus {
         final UUID senderId;
@@ -80,18 +67,22 @@ public final class CuddleCommandHandler {
         final Vec3 senderPos;
         final Vec3 receiverPos;
         final List<ServerPlayer> nearbyPlayers;
+        final String animId;
+        final String contentVersion;
         int ticksRemaining;
         /** v1.4：连续蹲下的 tick 数，达到 SNEAK_CANCEL_TICKS 立刻结束贴贴。 */
         int sneakTicks;
 
         CuddleStatus(UUID senderId, UUID receiverId, Vec3 senderPos, Vec3 receiverPos,
-                  int ticksRemaining, List<ServerPlayer> nearbyPlayers) {
+                     List<ServerPlayer> nearbyPlayers, String animId, String contentVersion, int ticksRemaining) {
             this.senderId = senderId;
             this.receiverId = receiverId;
             this.senderPos = senderPos;
             this.receiverPos = receiverPos;
-            this.ticksRemaining = ticksRemaining;
             this.nearbyPlayers = nearbyPlayers;
+            this.animId = animId;
+            this.contentVersion = contentVersion;
+            this.ticksRemaining = ticksRemaining;
         }
     }
 
@@ -129,7 +120,14 @@ public final class CuddleCommandHandler {
 
     // ------------------------------------------------------------------ 发起 / 接受 / 拒绝
 
-    public static boolean startCuddleRequest(ServerPlayer sender, ServerPlayer receiver, CuddleAnimationEnum animation) {
+    /**
+     * 登记请求并按双方能力决定最终动作与锁定时间（§6.3）：
+     * 接受者没有该动作、或两端内容版本不一致 → 回退默认动作并提示发起者。
+     *
+     * @param requestedAnimId 发起者券上选的动作
+     * @return 是否登记成功
+     */
+    public static boolean startCuddleRequest(ServerPlayer sender, ServerPlayer receiver, String requestedAnimId) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return false;
@@ -140,8 +138,37 @@ public final class CuddleCommandHandler {
             sender.sendSystemMessage(red("letscuddle.message.have_request"));
             return false;
         }
+
+        CuddleCaps senderCaps = CuddleCapsStore.capsOf(sender);
+        CuddleCaps receiverCaps = CuddleCapsStore.capsOf(receiver);
+        String requested = CuddleIds.normalize(requestedAnimId);
+        if (requested == null) {
+            requested = CuddleConstants.DEFAULT_ANIM_ID;
+        }
+
+        String animId = requested;
+        if (!receiverCaps.has(requested)) {
+            sender.sendSystemMessage(yellow(Component.translatable("letscuddle.message.anim_unavailable",
+                    receiver.getName().getString(), animName(requested))));
+            animId = CuddleConstants.DEFAULT_ANIM_ID;
+        } else if (!senderCaps.sameContent(requested, receiverCaps)) {
+            sender.sendSystemMessage(yellow(Component.translatable("letscuddle.message.anim_version_mismatch",
+                    receiver.getName().getString(), animName(requested))));
+            animId = CuddleConstants.DEFAULT_ANIM_ID;
+        }
+
+        int lockTicks = senderCaps.negotiatedLock(animId, receiverCaps);
+        String contentVersion = senderCaps.contentVersion(animId);
+        if (contentVersion == null) {
+            contentVersion = "1";
+        }
+
         REQUESTS.put(key, new CuddleRequest(sender.getUUID(), receiver.getUUID(),
-                server.getTickCount() + REQUEST_TIMEOUT_TICKS, animation));
+                server.getTickCount() + CuddleConstants.REQUEST_TIMEOUT_TICKS, animId, lockTicks, contentVersion));
+
+        xyz.skyofsimba.item.CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId));
+        sender.sendSystemMessage(Component.translatable("letscuddle.message.sendsuccess",
+                receiver.getName().getString(), animName(animId)).withStyle(ChatFormatting.GREEN));
         return true;
     }
 
@@ -162,7 +189,7 @@ public final class CuddleCommandHandler {
             receiver.sendSystemMessage(red2("letscuddle.message.invalid_level", sender));
             return;
         }
-        if (receiver.distanceTo(sender) > MAX_DISTANCE) {
+        if (receiver.distanceTo(sender) > CuddleConstants.MAX_DISTANCE) {
             receiver.sendSystemMessage(red2("letscuddle.message.too_far", sender));
             return;
         }
@@ -173,19 +200,18 @@ public final class CuddleCommandHandler {
             return;
         }
 
-        // PORT-FIX K3：先校验、后播「已接受」，避免「接受了却站不住」的双消息
+        // PORT-FIX K3：先校验、后播「已接受」
         sender.sendSystemMessage(green2("letscuddle.message.sender_accepted", receiver));
         receiver.sendSystemMessage(green2("letscuddle.message.receiver_accepted", sender));
 
         receiver.teleportTo(stand.x, stand.y, stand.z);
         receiver.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(sender.getX(), sender.getEyeY(), sender.getZ()));
-        // v1.5.1：发起者也转向接受者。原实现只让接受者转头，发起者的第三人称镜头
-        // 还朝着旧方向，而接受者被摆到了「发起者身后」，自动切第三人称后整段贴贴会跑到画面外。
+        // v1.5.1：发起者也转向接受者，否则第三人称镜头仍朝旧方向、整段贴贴跑到画面外
         sender.lookAt(EntityAnchorArgument.Anchor.EYES,
                 new Vec3(receiver.getX(), receiver.getEyeY(), receiver.getZ()));
 
-        broadcastCuddleStart(sender, receiver, request.animation());
+        broadcastCuddleStart(sender, receiver, request);
         REQUESTS.remove(key);
     }
 
@@ -204,20 +230,12 @@ public final class CuddleCommandHandler {
 
     // ------------------------------------------------------------------ 落点与安全检查
 
-    /**
-     * 原式：{@code R' = C + 1.3 * normalise(R - C)}，即把接受者摆到<b>发起者另一侧</b> 1.3 格处
-     * （语义按原实现保留，KEEP K4）。XZ 完全重合时返回 null（PORT-FIX K5）。
-     */
+    /** 1.x 公式：接受者落到发起者另一侧 {@link CuddleConstants#STAND_OFFSET} 格（KEEP K4）。 */
     private static Vec3 computeStandPosition(ServerPlayer sender, ServerPlayer receiver) {
-        Vec3 delta = sender.position().subtract(receiver.position());
-        double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
-        if (horizontal < 1.0E-4D) {
-            return null;
-        }
-
-        double offsetX = delta.x / horizontal * STAND_OFFSET;
-        double offsetZ = delta.z / horizontal * STAND_OFFSET;
-        return new Vec3(sender.getX() + offsetX, sender.getY(), sender.getZ() + offsetZ);
+        Vec3d position = CuddlePlacement.standPosition(
+                new Vec3d(sender.getX(), sender.getY(), sender.getZ()),
+                new Vec3d(receiver.getX(), receiver.getY(), receiver.getZ()));
+        return position == null ? null : new Vec3(position.x(), position.y(), position.z());
     }
 
     private static boolean isPositionSafe(Vec3 pos, Level level) {
@@ -227,43 +245,43 @@ public final class CuddleCommandHandler {
     /** 脚下要有碰撞（可站立）。 */
     private static boolean canStand(Vec3 pos, Level level) {
         AABB box = new AABB(
-                pos.x - STAND_HALF_WIDTH, pos.y - 0.1D, pos.z - STAND_HALF_WIDTH,
-                pos.x + STAND_HALF_WIDTH, pos.y, pos.z + STAND_HALF_WIDTH);
+                pos.x - CuddleConstants.STAND_HALF_WIDTH, pos.y - 0.1D, pos.z - CuddleConstants.STAND_HALF_WIDTH,
+                pos.x + CuddleConstants.STAND_HALF_WIDTH, pos.y, pos.z + CuddleConstants.STAND_HALF_WIDTH);
         return level.getBlockCollisions(null, box).iterator().hasNext();
     }
 
     /** 身体高度内不能有碰撞（可通过）。 */
     private static boolean canPass(Vec3 pos, Level level) {
         AABB box = new AABB(
-                pos.x - STAND_HALF_WIDTH, pos.y + 0.1D, pos.z - STAND_HALF_WIDTH,
-                pos.x + STAND_HALF_WIDTH, pos.y + 1.7D, pos.z + STAND_HALF_WIDTH);
+                pos.x - CuddleConstants.STAND_HALF_WIDTH, pos.y + 0.1D, pos.z - CuddleConstants.STAND_HALF_WIDTH,
+                pos.x + CuddleConstants.STAND_HALF_WIDTH, pos.y + 1.7D, pos.z + CuddleConstants.STAND_HALF_WIDTH);
         return !level.getBlockCollisions(null, box).iterator().hasNext();
     }
 
     // ------------------------------------------------------------------ 广播与状态
 
-    private static void broadcastCuddleStart(ServerPlayer sender, ServerPlayer receiver, CuddleAnimationEnum animation) {
+    private static void broadcastCuddleStart(ServerPlayer sender, ServerPlayer receiver, CuddleRequest request) {
         List<ServerPlayer> nearby = getNearbyPlayers(sender);
         CUDDLES.put(key(sender, receiver), new CuddleStatus(
                 sender.getUUID(), receiver.getUUID(),
-                sender.position(), receiver.position(),
-                ANIM_TICKS, nearby));
+                sender.position(), receiver.position(), nearby,
+                request.animId(), request.contentVersion(), request.lockTicks()));
 
-        // v1.5：动作由发起者决定（券上 NBT），整批接收者拿同一个 id
         CuddleRenderPayload payload = new CuddleRenderPayload(
-                sender.getUUID().toString(), receiver.getUUID().toString(), false, false, animation.id());
+                sender.getUUID().toString(), receiver.getUUID().toString(), false, false,
+                request.animId(), request.contentVersion());
         for (ServerPlayer player : nearby) {
             CuddleNetwork.sendTo(player, payload);
         }
     }
 
     /**
-     * @param cancelled v1.4：true 表示被蹲下提前取消，客户端要立即收掉动作；
+     * @param cancelled true 表示被蹲下提前取消，客户端要立即收掉动作；
      *                  正常结束/掉线解锁传 false（动作自然播完）
      */
     private static void broadcastCuddleEnd(CuddleStatus status, boolean cancelled) {
         CuddleRenderPayload payload = new CuddleRenderPayload(
-                status.senderId.toString(), status.receiverId.toString(), true, cancelled, "");
+                status.senderId.toString(), status.receiverId.toString(), true, cancelled, "", "");
         for (ServerPlayer player : status.nearbyPlayers) {
             if (player == null || player.hasDisconnected()) {
                 continue;
@@ -284,7 +302,7 @@ public final class CuddleCommandHandler {
             if (player.level() != level) {
                 continue;
             }
-            if (player.distanceTo(sender) < NEARBY_RADIUS) {
+            if (player.distanceTo(sender) < CuddleConstants.NEARBY_RADIUS) {
                 players.add(player);
             }
         }
@@ -305,9 +323,10 @@ public final class CuddleCommandHandler {
 
         expireRequests(server);
         tickCuddles(server);
+        CuddleCapsStore.tick(server);
     }
 
-    /** PORT-FIX K1/K2：过期扫描搬到主线程 tick，替换原来的 60 秒调度线程。 */
+    /** PORT-FIX K1/K2：过期扫描在主线程 tick，没有调度线程。 */
     private static void expireRequests(MinecraftServer server) {
         if (REQUESTS.isEmpty()) {
             return;
@@ -344,16 +363,15 @@ public final class CuddleCommandHandler {
 
             if (sender == null || receiver == null) {          // PORT-FIX K9
                 it.remove();
-                broadcastCuddleEnd(status, true);                  // 让旁观者解锁，并收掉动作
+                broadcastCuddleEnd(status, true);
                 continue;
             }
 
             sender.teleportTo(status.senderPos.x, status.senderPos.y, status.senderPos.z);
             receiver.teleportTo(status.receiverPos.x, status.receiverPos.y, status.receiverPos.z);
 
-            // v1.4：任一当事人按住蹲下 0.25 s 即提前结束（原版会把 sneak 状态同步到服务端）
             if (sender.isShiftKeyDown() || receiver.isShiftKeyDown()) {
-                if (++status.sneakTicks >= SNEAK_CANCEL_TICKS) {
+                if (++status.sneakTicks >= CuddleConstants.SNEAK_CANCEL_TICKS) {
                     it.remove();
                     broadcastCuddleEnd(status, true);
                     Component message = Component.translatable("letscuddle.message.cuddle_cancelled")
@@ -373,13 +391,15 @@ public final class CuddleCommandHandler {
         }
     }
 
-    /** PORT-FIX K9：掉线立刻清理，不等 tick 循环发现；同时广播结束包让旁观者解锁。 */
+    /** PORT-FIX K9：掉线立刻清理并广播结束包。 */
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
         UUID id = player.getUUID();
+        CuddleCapsStore.onDisconnect(player);
+        CuddleActionHandler.onDisconnect(id);
 
         Iterator<Map.Entry<Pair<UUID, UUID>, CuddleRequest>> requests = REQUESTS.entrySet().iterator();
         while (requests.hasNext()) {
@@ -407,8 +427,18 @@ public final class CuddleCommandHandler {
         return new Pair<>(sender.getUUID(), receiver.getUUID());
     }
 
+    /** 服务端能显示的动作名：内置动作走语言键，外部动作用 id。 */
+    private static Component animName(String animId) {
+        String key = CuddleAnimNames.builtinNameKey(animId);
+        return key == null ? Component.literal(animId) : Component.translatable(key);
+    }
+
     private static Component red(String key) {
         return Component.translatable(key).withStyle(ChatFormatting.RED);
+    }
+
+    private static Component yellow(Component component) {
+        return component.copy().withStyle(ChatFormatting.YELLOW);
     }
 
     private static Component green2(String key, ServerPlayer other) {
@@ -419,4 +449,3 @@ public final class CuddleCommandHandler {
         return Component.translatable(key, other.getName().getString()).withStyle(ChatFormatting.RED);
     }
 }
-

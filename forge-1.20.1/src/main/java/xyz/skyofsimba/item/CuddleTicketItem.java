@@ -14,55 +14,57 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import org.jetbrains.annotations.Nullable;
-import xyz.skyofsimba.animation.CuddleAnimationEnum;
+import xyz.skyofsimba.client.CuddleClientHooks;
 import xyz.skyofsimba.command.CuddleCommandHandler;
+import xyz.skyofsimba.core.CuddleConstants;
+import xyz.skyofsimba.core.CuddleIds;
 
 import java.util.List;
 
 /**
- * 贴贴券：右键另一名玩家发起贴贴请求。
+ * 贴贴券：右键另一名玩家发起请求，潜行 + 右键循环切换动作。
  *
- * <p>行为与原实现一致（KEEP K16：发起失败也返回 sidedSuccess，客户端照常播挥手动画）：
- * 服务端登记请求、立刻扣 1 张券、给对方发带 [同意]/[拒绝] 点击按钮的复合消息。
- *
- * <p>v1.5：动作由发起者自选 —— 选中的动作记在物品 NBT（{@value #ANIMATION_TAG}）里，
- * {@code Shift + 右键}（空中或玩家身上都行）循环切换，服务端改 NBT 后自动同步给客户端，
- * 所以不需要额外的 C2S 包；发起请求时服务端直接读手上的券。
+ * <p>选中的动作以字符串 id 存在 NBT {@value #ANIMATION_TAG} 里；1.x 的短 id（{@code normal} /
+ * {@code touch_head}）由 {@link CuddleIds#normalize} 自动迁移。
+ * 切换动作由客户端发起（{@link xyz.skyofsimba.network.CuddleSelectPayload}），服务端校验后写 NBT。
  */
 public class CuddleTicketItem extends Item {
 
-    /** 物品 NBT 里记录动作 id 的键。 */
+    /** 物品 NBT 里记录动作 id 的键（沿用 1.x 的键名，旧券直接可读）。 */
     private static final String ANIMATION_TAG = "Animation";
 
     public CuddleTicketItem(Properties properties) {
         super(properties);
     }
 
-    /** 读取券上选中的动作；没有 NBT（老券、创造栏刚拿的）时返回默认动作。 */
-    public static CuddleAnimationEnum getSelectedAnimation(ItemStack stack) {
+    /** 券上选中的动作 id；没有 NBT / 无法识别时返回默认动作。 */
+    public static String getSelectedAnimation(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        CuddleAnimationEnum animation = tag == null ? null : CuddleAnimationEnum.byId(tag.getString(ANIMATION_TAG));
-        return animation != null ? animation : CuddleAnimationEnum.NORMAL;
+        if (tag != null) {
+            String id = CuddleIds.normalize(tag.getString(ANIMATION_TAG));
+            if (id != null) {
+                return id;
+            }
+        }
+        return CuddleConstants.DEFAULT_ANIM_ID;
     }
 
-    /** 循环切到下一个动作并写回 NBT（**只能在服务端调用**，否则客户端本地改动不会同步）。 */
-    private static CuddleAnimationEnum cycleSelectedAnimation(ItemStack stack) {
-        CuddleAnimationEnum[] values = CuddleAnimationEnum.values();
-        CuddleAnimationEnum next = values[(getSelectedAnimation(stack).ordinal() + 1) % values.length];
-        stack.getOrCreateTag().putString(ANIMATION_TAG, next.id());
-        return next;
+    /** 写回选中的动作（**只能在服务端调用**，否则客户端本地改动不会同步）。 */
+    public static void setSelectedAnimation(ItemStack stack, String animId) {
+        stack.getOrCreateTag().putString(ANIMATION_TAG, animId);
     }
 
-    /** Shift + 右键空气：切换动作，action bar 提示当前选择。（1.20.1 的 Item#use 返回 InteractionResultHolder） */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!player.isShiftKeyDown()) {
             return InteractionResultHolder.pass(stack);
         }
-        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            notifySelection(serverPlayer, cycleSelectedAnimation(stack));
+        if (level.isClientSide) {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> CuddleClientHooks.selectNextAnimation(stack, hand));
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
@@ -74,10 +76,11 @@ public class CuddleTicketItem extends Item {
             return InteractionResult.PASS;
         }
 
-        // Shift + 右键玩家：只切换动作，不发请求（避免误触发起贴贴）
+        // 潜行 + 右键玩家：只切换动作，不发起请求（避免误触）
         if (player.isShiftKeyDown()) {
-            if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
-                notifySelection(serverPlayer, cycleSelectedAnimation(stack));
+            if (player.level().isClientSide) {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                        () -> () -> CuddleClientHooks.selectNextAnimation(stack, hand));
             }
             return InteractionResult.sidedSuccess(player.level().isClientSide);
         }
@@ -85,41 +88,27 @@ public class CuddleTicketItem extends Item {
         if (!player.level().isClientSide
                 && player instanceof ServerPlayer serverPlayer
                 && targetPlayer instanceof ServerPlayer serverTarget) {
-            CuddleAnimationEnum animation = getSelectedAnimation(stack);
-            if (CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, animation)) {
-                sendCuddleRequest(player, targetPlayer, animation);
-                player.sendSystemMessage(Component
-                        .translatable("letscuddle.message.sendsuccess",
-                                targetPlayer.getName().getString(), animation.displayName())
-                        .withStyle(ChatFormatting.GREEN));
-                stack.shrink(1);
-            }
+            CuddleCommandHandler.startCuddleRequest(serverPlayer, serverTarget, getSelectedAnimation(stack));
+            stack.shrink(1);
         }
+        // 发起失败也返回 sidedSuccess（KEEP K16）：客户端照常播挥手动画
         return InteractionResult.sidedSuccess(player.level().isClientSide);
     }
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("item.letscuddle.cuddle_ticket.desc").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.letscuddle.cuddle_ticket.animation",
-                getSelectedAnimation(stack).displayName()).withStyle(ChatFormatting.DARK_GRAY));
+        String animId = getSelectedAnimation(stack);
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> tooltip.add(Component
+                .translatable("item.letscuddle.cuddle_ticket.animation", CuddleClientHooks.displayName(animId))
+                .withStyle(ChatFormatting.DARK_GRAY)));
     }
 
-    private static void notifySelection(ServerPlayer player, CuddleAnimationEnum animation) {
-        player.displayClientMessage(
-                Component.translatable("letscuddle.message.animation_selected", animation.displayName())
-                        .withStyle(ChatFormatting.AQUA),
-                true);
-    }
-
-    /**
-     * 请求消息：蓝字提示 + 绿色 [同意] + 红色 [拒绝]。
-     * 按钮只发原版 {@code ClickEvent(RUN_COMMAND)}，零额外协议（原设计 3.2）。
-     */
-    private void sendCuddleRequest(Player sender, Player target, CuddleAnimationEnum animation) {
+    /** 给某人发一条带 [同意]/[拒绝] 按钮的请求消息（原设计 3.2：只用原版 RUN_COMMAND 点击事件）。 */
+    public static void sendRequestMessage(Player sender, Player target, Component animationName) {
         String senderName = sender.getName().getString();
         Component message = Component
-                .translatable("letscuddle.message.sendrequest", sender.getName(), animation.displayName())
+                .translatable("letscuddle.message.sendrequest", sender.getName(), animationName)
                 .withStyle(ChatFormatting.BLUE)
                 .append(Component.translatable("letscuddle.message.acceptrequest").withStyle(style -> style
                         .withColor(ChatFormatting.GREEN)
@@ -129,7 +118,6 @@ public class CuddleTicketItem extends Item {
                         .withColor(ChatFormatting.RED)
                         .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                 "/letscuddle rejectRequest " + senderName))));
-
         target.sendSystemMessage(message);
     }
 }
