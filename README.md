@@ -45,6 +45,7 @@ Players can cuddle with each other.
 ```
 
 首次进入某个存档会送 16 张贴贴券，也可以合成（1 张纸 ×4 + 淡蓝染料 ×2 + 粉红染料 ×1 → 4 张）。
+创造模式下贴贴券单独放在「贴贴」标签页里。
 
 ### 动作包
 
@@ -66,7 +67,7 @@ cd ../fabric-1.21.11 && ./gradlew build     # 需要 JDK 21 → build/libs/letsc
 
 Windows 用 `gradlew.bat`。两个工程各自独立（Gradle wrapper、JDK、映射都不同），共用仓库根下的 `common/`。
 
-单元测试（`common/` 的落点、id、能力、manifest、动画采样）跑在 `forge-1.20.1`：
+单元测试（`common/` 的落点、id、能力、manifest、body 位移采样）跑在 `forge-1.20.1`：
 
 ```bash
 cd forge-1.20.1 && ./gradlew test
@@ -110,6 +111,9 @@ talk to each other; both sides must run the same major version.
 2. Hold the cuddle ticket and right-click another player to send a request (consumes one ticket).
 3. After the other player clicks "Accept", the two embrace for 6 seconds by default; hold sneak for 0.25 s to
    end early.
+
+The first time you join a world you get 16 cuddle tickets, or craft them (4 paper + 2 light blue dye + 1 pink dye → 4).
+In creative mode the ticket lives in its own "Let's Cuddle" tab.
 
 Commands:
 

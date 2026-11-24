@@ -3,6 +3,34 @@
 本项目的版本号跟随模组自身功能演进。1.x 为 1.20.1 Forge；2.0 起同时支持 1.20.1 Forge 与 1.21.11 Fabric。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [2.0.0-beta3] — 2026-11-24
+
+### Added
+
+- **创造模式独立标签页**：贴贴券不再放进「工具与实用物品」，两个平台都单开一页「贴贴」
+  （`itemGroup.letscuddle`，图标就是贴贴券）。
+
+### Changed
+
+- `CuddleAnimClip`（1.21.11 的第三人称镜头位移采样）只解析 `body`/`torso` 的 x/z 位移，
+  不再解析旋转和其它骨骼；相机行为不变。
+- 内置动作的静态定义集中到 `common/CuddleBuiltins`，两个平台的注册表兜底与 `CuddleCaps`
+  共用同一份数据，避免与 jar 内 manifest 漂移。
+- 1.21.11 的资源重载改用 Fabric `ResourceLoader` v1 API（旧 `ResourceManagerHelper` 已弃用）。
+- 版本号 `2.0.0-beta3`。协议号仍是 4，能力包格式未变：beta1、beta2、beta3 可以互连。
+
+### Removed
+
+- `CuddlePose` / `Bone`（全骨骼采样的遗留）、`CuddleAnimNames`（并入 `CuddleBuiltins`）。
+- 不再使用的代码：`CuddleAnimClip` 的旋转/多骨骼采样与 `endTick`/`stopTick` 访问器、
+  `CuddleIds.isBuiltin`/`namespace`、`CuddleAnimRegistry.all`、`Snapshot.has`、
+  `Vec3d.add`/`ZERO`/`isZero`；1.20.1 `CuddleNetwork` 的三个重复 `sendTo` 重载。
+- 未使用的语言键 `letscuddle.message.anim_missing`、`letscuddle.message.anim_no_permission`。
+
+### Fixed
+
+- 1.21.11 退出/换存档时清理服务端能力快照，与 1.20.1 行为一致。
+
 ## [2.0.0-beta2] — 2026-11-23
 
 ### Fixed

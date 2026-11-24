@@ -2,7 +2,7 @@
 
 > 面向：要在这个项目上继续开发、做兼容或接 API 的人。
 > 配套：[2.0 计划](2.0.0-beta1-plan.md) · [动作包格式](animation-pack-format.md) · [制作指南](animation-pack-authoring.md)
-> 状态：2.0.0-beta2。
+> 状态：2.0.0-beta3。
 
 ## 1. 一句话
 
@@ -40,12 +40,12 @@ fabric-1.21.11/src/client/java/xyz/skyofsimba/          1.21.11 客户端专属�
 | 类 | 职责 |
 |---|---|
 | `CuddleConstants` | 所有常量（见 §8） |
-| `CuddleIds` | id 校验、`normal`→`letscuddle:normal` 迁移、内容版本/命名空间工具 |
+| `CuddleIds` | id 校验、`normal`→`letscuddle:normal` 迁移、内容版本规整 |
 | `CuddlePlacement` | 落点公式、朝向 yaw、`body` 位移到世界坐标的换算 |
 | `CuddleCaps` | 客户端能力快照（`id → lock/contentVersion/nameKey/name`），清洗与协商 |
 | `CuddleAnimDef` / `CuddleAnimManifest` | manifest 数据模型与解析/校验 |
-| `CuddleAnimClip` / `CuddlePose` / `Bone` | `emote` 动画 JSON 的采样（**只服务相机位移**） |
-| `CuddleAnimNames` | 内置动作的语言键回退 |
+| `CuddleBuiltins` | 内置动作的静态定义与语言键（注册表/能力兜底共用） |
+| `CuddleAnimClip` | 动作 JSON 的 `body` 水平位移采样（**只服务相机位移**） |
 | `Vec3d` | 纯数据三元组 |
 
 ## 5. 运行时架构
@@ -99,7 +99,7 @@ accept（命令）依次校验：
 
 - Forge：`SimpleChannel` 消息 id 0–4，通道协议字符串 `"4"`（1.x 客户端在通道层被拒）。
 - Fabric：payload id `letscuddle:{caps,select,render,selected,request_caps}`，没有通道版本，靠 caps 的 `protocol` 判断。
-- Caps 的名字尾段是可选的：没有尾段时服务端退回语言键/id，因此 beta1 与 beta2 可互连。
+- Caps 的名字尾段是可选的：没有尾段时服务端退回语言键/id，因此 beta1、beta2、beta3 可互连。
 
 ### 5.5 客户端注册表与热重载
 
@@ -107,7 +107,7 @@ accept（命令）依次校验：
 → 排序（`order` asc, id）→ 计算 caps → 重新上报。若重载后缺少 `letscuddle:normal`，保留旧快照并 `ERROR`。
 
 `player_animation(s)/` 目录由动画库读取（Forge: playerAnimator；Fabric: PAL）。
-Fabric 另外解析同一批 JSON 供 `CuddleAnimClip` 采样，**仅用于相机位移**。
+Fabric 另外用 `CuddleAnimClip` 解析同一批 JSON，**只取 `body` 的 x/z 位移**给相机用；旋转与其他骨骼不解析。
 
 ### 5.6 渲染与相机
 
@@ -208,7 +208,7 @@ Fabric 以**实体 id** 为键（渲染状态只有 id），Forge 以 UUID 为�
 | 需求 | 现在怎么做 |
 |---|---|
 | 新增动作 | 资源包 manifest（见格式文档），不需要改代码 |
-| 改默认动作/内置动作 | 覆盖同路径 manifest（`test-packs/override-normal` 是例子） |
+| 改默认动作/内置动作 | 覆盖同路径 manifest（`test-packs/override-normal` 是例子）；静态兜底在 `CuddleBuiltins` |
 | 知道"谁在贴贴" | 目前无公开 API；Fabric 客户端可读 `CuddleAnimBackend.isLocked(id)`（内部类） |
 | 给贴贴加钩子 | 需要在服务端状态机里加事件（Forge 事件总线 / Fabric 自建 `Event<>`） |
 | 兼容其它动画库 | 改 `AnimationManager`（Forge）/ `CuddlePalBridge`（Fabric），保持层 id、优先级、速度语义 |

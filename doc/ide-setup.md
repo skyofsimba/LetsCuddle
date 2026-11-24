@@ -63,7 +63,7 @@
 | 目的 | forge-1.20.1 | fabric-1.21.11 |
 |---|---|---|
 | 构建 | `gradlew build` | `gradlew build` |
-| 测试 | `gradlew test`（Gradle 自身需 JDK 21；编译仍是 17 工具链） | — |
+| 测试 | `gradlew test`（JDK 17 即可；编译用 17 工具链） | — |
 | 客户端 | `runClient` | `runClient` |
 | 服务端 | `runServer`（首次改 `run/eula.txt`） | `runServer` |
 
