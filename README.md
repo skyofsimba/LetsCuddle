@@ -72,6 +72,8 @@ Windows 用 `gradlew.bat`。两个工程各自独立（Gradle wrapper、JDK、�
 cd forge-1.20.1 && ./gradlew test
 ```
 
+用 IntelliJ IDEA 开发时，两个平台可以导入同一个窗口（各自 Gradle 版本与 JDK），见 [doc/ide-setup.md](doc/ide-setup.md)。
+
 ### 致谢与许可
 
 - 原版模组 **HugMe**：TuYw（[TunYuntuwuQWQ](https://github.com/TunYuntuwuQWQ)），MIT
