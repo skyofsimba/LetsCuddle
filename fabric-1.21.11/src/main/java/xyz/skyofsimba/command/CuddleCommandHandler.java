@@ -16,7 +16,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import xyz.skyofsimba.core.CuddleAnimNames;
+import xyz.skyofsimba.core.CuddleBuiltins;
 import xyz.skyofsimba.core.CuddleCaps;
 import xyz.skyofsimba.core.CuddleConstants;
 import xyz.skyofsimba.core.CuddleIds;
@@ -414,7 +414,7 @@ public final class CuddleCommandHandler {
                 return Text.literal(anim.name());
             }
         }
-        String key = CuddleAnimNames.builtinNameKey(animId);
+        String key = CuddleBuiltins.builtinNameKey(animId);
         return key == null ? Text.literal(animId) : Text.translatable(key);
     }
 

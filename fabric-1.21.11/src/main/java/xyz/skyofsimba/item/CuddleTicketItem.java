@@ -113,5 +113,3 @@ public class CuddleTicketItem extends Item {
         target.sendMessage(message, false);
     }
 }
-
-

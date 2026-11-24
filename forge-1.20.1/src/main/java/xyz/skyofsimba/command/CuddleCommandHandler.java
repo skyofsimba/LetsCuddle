@@ -19,12 +19,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import xyz.skyofsimba.Letscuddle;
-import xyz.skyofsimba.core.CuddleAnimNames;
+import xyz.skyofsimba.core.CuddleBuiltins;
 import xyz.skyofsimba.core.CuddleCaps;
 import xyz.skyofsimba.core.CuddleConstants;
 import xyz.skyofsimba.core.CuddleIds;
 import xyz.skyofsimba.core.CuddlePlacement;
 import xyz.skyofsimba.core.Vec3d;
+import xyz.skyofsimba.item.CuddleTicketItem;
 import xyz.skyofsimba.network.CuddleCapsStore;
 import xyz.skyofsimba.network.CuddleNetwork;
 import xyz.skyofsimba.network.CuddleRenderPayload;
@@ -39,9 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 服务端状态机：请求 → 接受/拒绝 → 锁定 → 解锁。
  *
- * <p>1.x 的 PORT-FIX 全部保留：过期在主线程 tick（K1/K2）、先校验后播「已接受」（K3）、
- * 重合退化为无法站立（K5）、掉线立刻清理（K9）、结束走同一条广播路径（K11）、
- * 校验请求接收者（K13）。2.0 新增动作 id 字符串化与能力回退（§6.3）。
+ * <p>过期在主线程 tick（不自建线程）；先校验后播「已接受」；结束/掉线走同一条广播路径。
+ * 动作与锁定时间由双方能力协商，缺动作/版本不一致时回退默认动作。
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class CuddleCommandHandler {
@@ -166,7 +166,7 @@ public final class CuddleCommandHandler {
         REQUESTS.put(key, new CuddleRequest(sender.getUUID(), receiver.getUUID(),
                 server.getTickCount() + CuddleConstants.REQUEST_TIMEOUT_TICKS, animId, lockTicks, contentVersion));
 
-        xyz.skyofsimba.item.CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId, senderCaps));
+        CuddleTicketItem.sendRequestMessage(sender, receiver, animName(animId, senderCaps));
         sender.sendSystemMessage(Component.translatable("letscuddle.message.sendsuccess",
                 receiver.getName().getString(), animName(animId, senderCaps)).withStyle(ChatFormatting.GREEN));
         return true;
@@ -441,7 +441,7 @@ public final class CuddleCommandHandler {
                 return Component.literal(anim.name());
             }
         }
-        String key = CuddleAnimNames.builtinNameKey(animId);
+        String key = CuddleBuiltins.builtinNameKey(animId);
         return key == null ? Component.literal(animId) : Component.translatable(key);
     }
 

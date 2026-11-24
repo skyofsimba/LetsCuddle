@@ -1,6 +1,6 @@
 package xyz.skyofsimba.core;
 
-/** 两个平台共享的常量。改这里之前先读 {@code doc/2.0.0-beta1-plan.md} §1.3 与 §6。 */
+/** 两个平台共享的常量。含义与使用方见 {@code doc/architecture.md} §8。 */
 public final class CuddleConstants {
 
     public static final String MODID = "letscuddle";

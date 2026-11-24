@@ -37,6 +37,15 @@ public record CuddleCaps(int protocol, int format, Map<String, Anim> animations)
     public static final CuddleCaps EMPTY =
             new CuddleCaps(CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT, Map.of());
 
+    /** 客户端还没上报能力时的兜底：只有内置动作。 */
+    public static CuddleCaps builtinOnly() {
+        Map<String, Anim> map = new LinkedHashMap<>();
+        for (CuddleAnimDef def : CuddleBuiltins.ALL) {
+            map.put(def.id(), new Anim(def.lockTicks(), def.contentVersion()));
+        }
+        return sanitize(CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT, map);
+    }
+
     public CuddleCaps {
         animations = animations == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(animations));
     }

@@ -105,9 +105,9 @@ public final class CuddleAnimManifest {
 
         float speed = (float) readNumber(root, "speed", CuddleConstants.DEFAULT_SPEED,
                 CuddleConstants.MIN_SPEED, CuddleConstants.MAX_SPEED, warnings);
-        int lockTicks = CuddleCaps.clampLock((int) readNumber(root, "lock_ticks",
+        int lockTicks = (int) readNumber(root, "lock_ticks",
                 CuddleConstants.DEFAULT_LOCK_TICKS, CuddleConstants.MIN_LOCK_TICKS,
-                CuddleConstants.MAX_LOCK_TICKS, warnings));
+                CuddleConstants.MAX_LOCK_TICKS, warnings);
         int order = (int) readNumber(root, "order", 0, Integer.MIN_VALUE, Integer.MAX_VALUE, warnings);
 
         CuddleAnimDef def = new CuddleAnimDef(id, contentVersion, sender, receiver,

@@ -46,10 +46,4 @@ class CuddleIdsTest {
         String longVersion = "x".repeat(CuddleConstants.MAX_CONTENT_VERSION_LEN + 10);
         assertEquals(CuddleConstants.MAX_CONTENT_VERSION_LEN, CuddleIds.contentVersion(longVersion).length());
     }
-
-    @Test
-    void builtinNamespaceIsRecognised() {
-        assertTrue(CuddleIds.isBuiltin(CuddleConstants.DEFAULT_ANIM_ID));
-        assertFalse(CuddleIds.isBuiltin("heartpack:warm"));
-    }
 }

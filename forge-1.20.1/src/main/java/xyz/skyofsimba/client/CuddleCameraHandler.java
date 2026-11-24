@@ -14,14 +14,10 @@ import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.events.RenderPlayerEventHandler;
 
 /**
- * 贴贴期间的第三人称切换（仅客户端、仅当事人）。
+ * 贴贴期间的第三人称切换与镜头跟随（仅客户端、仅当事人）。
  *
- * <p>规则（v1.4 定稿）：
- * <ul>
- *   <li>开始：记住进入前的视角，切到 {@link CameraType#THIRD_PERSON_BACK}；</li>
- *   <li>结束：只有当视角仍停留在我们切过去的 {@code THIRD_PERSON_BACK} 时才恢复原视角 ——
- *       玩家在贴贴期间自己按 F5 换过视角的，一律尊重玩家的选择，不覆盖。</li>
- * </ul>
+ * <p>开始贴贴时记住原视角并切到第三人称；结束时只有视角仍停在
+ * {@link CameraType#THIRD_PERSON_BACK} 才恢复（玩家中途按过 F5 就尊重玩家）。
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class CuddleCameraHandler {
@@ -67,14 +63,10 @@ public final class CuddleCameraHandler {
     }
 
     /**
-     * v1.5.1：第三人称镜头跟随「渲染模型的实际位置」。
+     * 第三人称镜头跟随渲染模型的实际位置。
      *
-     * <p>原版第三人称相机绕实体坐标旋转（{@code Camera#setup} 里算好位置），
-     * 而贴贴动画的 {@code body} 位移把渲染模型推开了约 1 格，于是画面中心是空地、贴贴偏在一边。
-     * 本事件在 {@code Camera#setup} 之后、{@code LevelRenderer#renderLevel} 之前触发，
-     * 此时改相机位置会直接作用于这一帧（AT 把 {@code Camera#setPosition(Vec3)} 开成了 public）。
-     *
-     * <p>只在第三人称生效；第一人称相机就在眼睛上，不需要偏移。
+     * <p>原版相机绕实体坐标旋转，而贴贴动画把模型推开了约 1 格；本事件在 {@code Camera#setup}
+     * 之后触发，此时平移相机即可作用于这一帧（AT 打开了 {@code Camera#setPosition}）。第一人称不偏移。
      */
     @SubscribeEvent
     public static void onComputeCameraAngles(ViewportEvent.ComputeCameraAngles event) {

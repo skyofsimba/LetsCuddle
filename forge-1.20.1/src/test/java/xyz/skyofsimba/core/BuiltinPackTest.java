@@ -20,7 +20,7 @@ class BuiltinPackTest {
             "normal.json", "touch_head.json");
 
     @Test
-    void builtinManifestsAreValid() throws Exception {
+    void builtinManifestsMatchTheStaticDefinitions() throws Exception {
         for (String name : MANIFESTS) {
             String resource = "/assets/letscuddle/cuddle_animations/" + name;
             try (InputStream stream = getClass().getResourceAsStream(resource)) {
@@ -33,6 +33,10 @@ class BuiltinPackTest {
                 assertEquals(CuddleConstants.DEFAULT_SPEED, result.def().speed(), 1.0E-6);
                 assertTrue(CuddleIds.isValid(result.def().senderId()));
                 assertTrue(CuddleIds.isValid(result.def().receiverId()));
+
+                // 客户端兜底用的静态定义必须与 jar 里的 manifest 一致
+                CuddleAnimDef expected = "normal.json".equals(name) ? CuddleBuiltins.NORMAL : CuddleBuiltins.TOUCH_HEAD;
+                assertEquals(expected, result.def());
             }
         }
     }
@@ -44,10 +48,9 @@ class BuiltinPackTest {
         Assumptions.assumeTrue(Files.exists(source), "built-in animation source not found");
         CuddleAnimClip clip = CuddleAnimClip.parse(Files.readString(source));
         assertNotNull(clip);
-        assertEquals(61, clip.stopTick());
+        assertEquals("cuddle_normal_receiver", clip.name());
         // torso.z 在 tick 20 到达 -1（推进对方怀里 1 格）
-        assertEquals(-1.0F, clip.value("body", "z", 20.0F), 1.0E-4);
-        // 头部在动作中段有可见偏转
-        assertTrue(Math.abs(clip.value("head", "yaw", 34.0F)) > 0.1F);
+        assertEquals(-1.0F, clip.bodyZ(20.0F), 1.0E-4);
+        assertEquals(0.0F, clip.bodyX(20.0F), 1.0E-4);
     }
 }

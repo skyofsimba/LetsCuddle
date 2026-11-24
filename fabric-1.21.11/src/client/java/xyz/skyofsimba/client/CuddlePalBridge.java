@@ -27,16 +27,12 @@ import xyz.skyofsimba.core.CuddleConstants;
 public final class CuddlePalBridge {
 
     /** 层 id 与优先级沿用 1.x 的约定。 */
-    public static final Identifier LAYER_ID = Identifier.of(CuddleConstants.MODID, "animations");
+    private static final Identifier LAYER_ID = Identifier.of(CuddleConstants.MODID, "animations");
 
     private static final String PAL_MOD_ID = "player_animation_library";
     private static final boolean AVAILABLE = FabricLoader.getInstance().isModLoaded(PAL_MOD_ID);
 
     private CuddlePalBridge() {}
-
-    public static boolean isAvailable() {
-        return AVAILABLE;
-    }
 
     /** 每个客户端玩家创建一次动画层。 */
     public static void registerFactory() {

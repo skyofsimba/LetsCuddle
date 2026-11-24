@@ -1,5 +1,7 @@
 package xyz.skyofsimba.core;
 
+import java.util.List;
+
 /**
  * 一个动作的不可变定义，来源是动作包里的 manifest。
  *
@@ -27,5 +29,18 @@ public record CuddleAnimDef(String id, String contentVersion, String senderId, S
 
     public boolean hasNameKey() {
         return nameKey != null && !nameKey.isEmpty();
+    }
+
+    /** 选择列表里的下一个 id（循环）；当前 id 不在列表里时回到第一个。 */
+    public static String nextId(List<CuddleAnimDef> ordered, String currentId) {
+        if (ordered.isEmpty()) {
+            return CuddleConstants.DEFAULT_ANIM_ID;
+        }
+        for (int i = 0; i < ordered.size(); i++) {
+            if (ordered.get(i).id().equals(currentId)) {
+                return ordered.get((i + 1) % ordered.size()).id();
+            }
+        }
+        return ordered.get(0).id();
     }
 }

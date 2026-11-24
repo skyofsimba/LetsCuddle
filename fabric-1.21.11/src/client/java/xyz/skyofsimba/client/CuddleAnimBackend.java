@@ -11,7 +11,6 @@ import xyz.skyofsimba.core.CuddleAnimClip;
 import xyz.skyofsimba.core.CuddleAnimDef;
 import xyz.skyofsimba.core.CuddleConstants;
 import xyz.skyofsimba.core.CuddlePlacement;
-import xyz.skyofsimba.core.CuddlePose;
 
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -23,8 +22,8 @@ import java.util.UUID;
  * 客户端贴贴状态：谁在跟谁贴、播的哪段动作、从什么时候开始。
  *
  * <p>动画本身交给 PAL（{@link CuddlePalBridge}）；这里只保留渲染需要的两件事：
- * 朝向伙伴的 yaw，以及第三人称镜头要跟随的 {@code body} 位移
- * （位移值用 common 的采样器从同一份 JSON 算，避免依赖 PAL 的内部骨骼 API）。
+ * 朝向伙伴的 yaw，以及第三人称镜头要跟随的 {@code body} 水平位移
+ * （用 common 的采样器从同一份 JSON 算，不依赖 PAL 的内部骨骼 API）。
  * 锁定表以<b>实体 id</b> 为键（渲染状态里只有 id，没有 UUID）。
  */
 public final class CuddleAnimBackend {
@@ -117,29 +116,20 @@ public final class CuddleAnimBackend {
                 new xyz.skyofsimba.core.Vec3d(partner.getX(), partner.getY(), partner.getZ()));
     }
 
-    /** 采样该玩家这一刻的姿势（只有镜头位移在用）；没锁定或动画缺失时返回 null。 */
-    @Nullable
-    public static CuddlePose pose(int entityId, float tickDelta) {
+    /** body 位移在世界空间的水平分量（第三人称镜头用）。 */
+    public static Vec3d bodyOffset(int entityId, float tickDelta) {
         Lock lock = LOCKS.get(entityId);
-        if (lock == null) {
-            return null;
+        Float yaw = targetYaw(entityId);
+        if (lock == null || yaw == null) {
+            return Vec3d.ZERO;
         }
         CuddleAnimClip clip = clip(lock);
         if (clip == null) {
-            return null;
-        }
-        return clip.sample(animationTick(lock, tickDelta));
-    }
-
-    /** body 位移在世界空间的水平分量（第三人称镜头用）。 */
-    public static Vec3d bodyOffset(int entityId, float tickDelta) {
-        CuddlePose pose = pose(entityId, tickDelta);
-        Float yaw = targetYaw(entityId);
-        if (pose == null || yaw == null) {
             return Vec3d.ZERO;
         }
+        float tick = animationTick(lock, tickDelta);
         xyz.skyofsimba.core.Vec3d offset =
-                CuddlePlacement.worldBodyOffset(pose.body().x(), pose.body().z(), yaw);
+                CuddlePlacement.worldBodyOffset(clip.bodyX(tick), clip.bodyZ(tick), yaw);
         return new Vec3d(offset.x(), offset.y(), offset.z());
     }
 

@@ -46,15 +46,7 @@ public final class CuddleNetwork {
     }
 
     /** 发给单个玩家（64 格内的旁观者与当事人）。 */
-    public static void sendTo(ServerPlayer player, CuddleRenderPayload message) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
-    }
-
-    public static void sendTo(ServerPlayer player, CuddleSelectedPayload message) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
-    }
-
-    public static void sendTo(ServerPlayer player, CuddleRequestCapsPayload message) {
+    public static <MSG> void sendTo(ServerPlayer player, MSG message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 

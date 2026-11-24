@@ -1,6 +1,5 @@
 package xyz.skyofsimba.core;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,48 +13,41 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 内置/第三方动作 JSON（Emotecraft 的 {@code emote} 格式）的解析与采样。
+ * 动作 JSON（{@code emote} 格式）的解析，只保留第三人称镜头需要的 {@code body} 水平位移。
  *
- * <p>这是 1.21.11 Fabric 端的内部播放器：1.20.1 用 playerAnimator，这边没有等价库，
- * 所以按 playerAnimator 1.0.2 的采样语义逐条复刻（{@code KeyframeAnimationPlayer}）：
+ * <p>动画本身由平台动画库播放（1.20.1 playerAnimator、1.21.11 PAL）；这里复刻 playerAnimator
+ * 的采样语义，把模型相对实体坐标的偏移同步到相机：
  * <ul>
- *   <li>每个「骨骼 × 轴」是独立通道，各自插值；</li>
- *   <li>通道没有关键帧时取默认值 0；</li>
- *   <li>首帧之前从 {@code beginTick} 的默认值插值到首帧（缓动用隐式关键帧的 INOUTSINE）；</li>
- *   <li>两帧之间用<b>前一帧</b>的缓动；</li>
- *   <li>{@code endTick} 之后用最后一帧的值保持，到 {@code stopTick} 再回落到默认值。</li>
+ *   <li>每个轴是独立通道；通道没有关键帧时取 0；</li>
+ *   <li>首帧之前从 0 插值到首帧（INOUTSINE）；两帧之间用<b>前一帧</b>的缓动；</li>
+ *   <li>{@code endTick} 之后保持最后一帧，到 {@code stopTick} 回落到 0。</li>
  * </ul>
  */
 public final class CuddleAnimClip {
 
-    /** JSON 里的骨骼名（{@code torso} 是旧名，等价于 {@code body}）。 */
-    private static final String[] BONES = {"body", "head", "leftArm", "rightArm", "leftLeg", "rightLeg"};
-    /** 三个位移轴（米）。 */
-    private static final String[] POSITIONS = {"x", "y", "z"};
-    /** 三个旋转轴（弧度）。 */
-    private static final String[] ROTATIONS = {"pitch", "yaw", "roll"};
-
-    private static final float TWO_PI = (float) (Math.PI * 2.0);
+    private static final String BODY = "body";
+    /** 旧动作 JSON 用 {@code torso} 表示根骨骼。 */
+    private static final String TORSO = "torso";
+    private static final String X = "x";
+    private static final String Z = "z";
 
     private final Map<String, Channel> channels;
+    private final String name;
     private final int beginTick;
     private final int endTick;
     private final int stopTick;
 
-    private CuddleAnimClip(Map<String, Channel> channels, int beginTick, int endTick, int stopTick) {
+    private CuddleAnimClip(Map<String, Channel> channels, String name, int beginTick, int endTick, int stopTick) {
         this.channels = channels;
+        this.name = name;
         this.beginTick = beginTick;
         this.endTick = endTick;
         this.stopTick = stopTick;
     }
 
-    /** 动画自身的总 tick（{@code stopTick}），播放器据此判断是否播完。 */
-    public int stopTick() {
-        return stopTick;
-    }
-
-    public int endTick() {
-        return endTick;
+    /** JSON 根节点的 {@code name}（动画 id 的 path）；缺失、为空或含冒号时返回 {@code null}。 */
+    public String name() {
+        return name;
     }
 
     /**
@@ -68,13 +60,15 @@ public final class CuddleAnimClip {
                 || json.getBytes(StandardCharsets.UTF_8).length > CuddleConstants.MAX_ANIMATION_BYTES) {
             return null;
         }
+        JsonObject root;
         JsonObject emote;
         try {
-            JsonElement root = JsonParser.parseString(json);
-            if (!root.isJsonObject()) {
+            JsonElement parsed = JsonParser.parseString(json);
+            if (!parsed.isJsonObject()) {
                 return null;
             }
-            JsonElement element = root.getAsJsonObject().get("emote");
+            root = parsed.getAsJsonObject();
+            JsonElement element = root.get("emote");
             if (element == null || !element.isJsonObject()) {
                 return null;
             }
@@ -89,24 +83,21 @@ public final class CuddleAnimClip {
         if (stop < end) {
             stop = end;
         }
-        boolean degrees = emote.has("degrees") && emote.get("degrees").isJsonPrimitive()
-                && emote.getAsJsonPrimitive("degrees").isBoolean()
-                && emote.getAsJsonPrimitive("degrees").getAsBoolean();
 
         Map<String, Channel> channels = new HashMap<>();
         JsonElement moves = emote.get("moves");
         if (moves != null && moves.isJsonArray()) {
-            for (JsonElement moveElement : moves.getAsJsonArray()) {
-                if (!moveElement.isJsonObject()) {
-                    continue;
+            for (JsonElement move : moves.getAsJsonArray()) {
+                if (move.isJsonObject()) {
+                    parseMove(move.getAsJsonObject(), channels);
                 }
-                parseMove(moveElement.getAsJsonObject(), degrees, channels);
             }
         }
-        return new CuddleAnimClip(channels, begin, end, stop);
+        return new CuddleAnimClip(channels, nameOf(root), begin, end, stop);
     }
 
-    private static void parseMove(JsonObject move, boolean degrees, Map<String, Channel> channels) {
+    /** 只取 {@code body}/{@code torso} 的 x、z 位移；旋转与其它骨骼与镜头无关。 */
+    private static void parseMove(JsonObject move, Map<String, Channel> channels) {
         if (!move.has("tick")) {
             return;
         }
@@ -120,48 +111,39 @@ public final class CuddleAnimClip {
                 ? move.get("easing").getAsString()
                 : "linear";
         float ease = Easing.weight(easingName);
-        int turn = move.has("turn") ? move.get("turn").getAsInt() : 0;
 
         for (Map.Entry<String, JsonElement> entry : move.entrySet()) {
-            String boneName = "torso".equals(entry.getKey()) ? "body" : entry.getKey();
-            if (!isBone(boneName) || !entry.getValue().isJsonObject()) {
+            String bone = TORSO.equals(entry.getKey()) ? BODY : entry.getKey();
+            if (!BODY.equals(bone) || !entry.getValue().isJsonObject()) {
                 continue;
             }
             JsonObject part = entry.getValue().getAsJsonObject();
-            for (String axis : POSITIONS) {
-                float value = floatField(part, axis);
-                if (!Float.isNaN(value)) {
-                    channel(channels, boneName, axis).add(tick, value, ease);
-                }
+            float x = floatField(part, X);
+            if (!Float.isNaN(x)) {
+                channel(channels, BODY + "." + X).add(tick, x, ease);
             }
-            for (String axis : ROTATIONS) {
-                float value = floatField(part, axis);
-                if (!Float.isNaN(value)) {
-                    if (degrees) {
-                        value = (float) Math.toRadians(value);
-                    }
-                    value += TWO_PI * turn;
-                    channel(channels, boneName, axis).add(tick, value, ease);
-                }
+            float z = floatField(part, Z);
+            if (!Float.isNaN(z)) {
+                channel(channels, BODY + "." + Z).add(tick, z, ease);
             }
         }
     }
 
-    private static Channel channel(Map<String, Channel> channels, String bone, String axis) {
-        return channels.computeIfAbsent(bone + "." + axis, key -> new Channel());
+    private static String nameOf(JsonObject root) {
+        JsonElement element = root.get("name");
+        if (!isString(element)) {
+            return null;
+        }
+        String value = element.getAsString().trim();
+        return value.isEmpty() || value.contains(":") ? null : value;
     }
 
-    private static boolean isBone(String name) {
-        for (String bone : BONES) {
-            if (bone.equals(name)) {
-                return true;
-            }
-        }
-        return false;
+    private static Channel channel(Map<String, Channel> channels, String key) {
+        return channels.computeIfAbsent(key, ignored -> new Channel());
     }
 
     private static boolean isString(JsonElement element) {
-        return element.isJsonPrimitive() && ((JsonPrimitive) element).isString();
+        return element != null && element.isJsonPrimitive() && ((JsonPrimitive) element).isString();
     }
 
     private static int intField(JsonObject object, String field, int fallback) {
@@ -182,36 +164,18 @@ public final class CuddleAnimClip {
 
     // ------------------------------------------------------------------ 采样
 
-    /** 采样某一 tick 的姿势（tick 可以为小数，用于帧插值）。 */
-    public CuddlePose sample(float tick) {
-        return new CuddlePose(
-                bone("body", tick),
-                bone("head", tick),
-                bone("leftArm", tick),
-                bone("rightArm", tick),
-                bone("leftLeg", tick),
-                bone("rightLeg", tick));
+    /** {@code body} 在某一 tick 的 X 位移（米，模型空间）。 */
+    public float bodyX(float tick) {
+        return sample(BODY + "." + X, tick);
     }
 
-    /** 某个通道在某一 tick 的值；没有该通道时为 0。 */
-    public float value(String bone, String axis, float tick) {
-        Channel channel = channels.get(bone + "." + axis);
-        return channel == null ? 0F : channel.sample(tick, beginTick, endTick, stopTick);
+    /** {@code body} 在某一 tick 的 Z 位移（米，模型空间；-1 表示压进对方怀里 1 格）。 */
+    public float bodyZ(float tick) {
+        return sample(BODY + "." + Z, tick);
     }
 
-    private Bone bone(String name, float tick) {
-        Channel x = channels.get(name + ".x");
-        Channel y = channels.get(name + ".y");
-        Channel z = channels.get(name + ".z");
-        Channel pitch = channels.get(name + ".pitch");
-        Channel yaw = channels.get(name + ".yaw");
-        Channel roll = channels.get(name + ".roll");
-        return new Bone(
-                sampleOrZero(x, tick), sampleOrZero(y, tick), sampleOrZero(z, tick),
-                sampleOrZero(yaw, tick), sampleOrZero(pitch, tick), sampleOrZero(roll, tick));
-    }
-
-    private float sampleOrZero(Channel channel, float tick) {
+    private float sample(String key, float tick) {
+        Channel channel = channels.get(key);
         return channel == null ? 0F : channel.sample(tick, beginTick, endTick, stopTick);
     }
 

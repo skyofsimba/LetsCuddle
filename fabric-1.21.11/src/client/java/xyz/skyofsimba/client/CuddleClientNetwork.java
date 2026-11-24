@@ -35,7 +35,7 @@ public final class CuddleClientNetwork {
                 context.client().execute(() -> CuddleClientHooks.showSelected(payload.animId())));
 
         ClientPlayNetworking.registerGlobalReceiver(CuddleRequestCapsPayload.ID, (payload, context) ->
-                context.client().execute(CuddleClientHooks::onRequestCaps));
+                context.client().execute(() -> CuddleClientHooks.INSTANCE.sendCaps()));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> CuddleAnimBackend.tick());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> CuddleAnimBackend.clear());

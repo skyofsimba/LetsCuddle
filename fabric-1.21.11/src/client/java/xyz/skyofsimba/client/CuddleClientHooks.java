@@ -52,12 +52,4 @@ public final class CuddleClientHooks extends CuddleClientBridge {
                     INSTANCE.displayName(animId)).formatted(Formatting.AQUA), true);
         }
     }
-
-    /** 服务端请求能力时的回包（与 {@link #sendCaps()} 等价，单独留名便于阅读）。 */
-    public static void onRequestCaps() {
-        INSTANCE.sendCaps();
-    }
 }
-
-
-

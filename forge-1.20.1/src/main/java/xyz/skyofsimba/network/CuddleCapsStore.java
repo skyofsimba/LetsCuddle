@@ -15,21 +15,15 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 服务端的「客户端能力」快照：{@code UUID → CuddleCaps}。
+ * 服务端的「客户端能力」快照：{@code UUID → CuddleCaps}，只在服务端主线程读写。
  *
- * <p>只从 {@link CuddleCapsPayload} 写入，只在服务端主线程读写。
- * 玩家登录时发 {@link CuddleRequestCapsPayload}；{@link CuddleConstants#CAPS_TIMEOUT_TICKS} 内没收到
+ * <p>玩家登录时发 {@link CuddleRequestCapsPayload}；{@link CuddleConstants#CAPS_TIMEOUT_TICKS} 内没收到
  * 就按「只有内置动作」处理并提示一次，避免发起请求时无限等待。
  */
 public final class CuddleCapsStore {
 
     /** 内置动作的能力快照：客户端没上报时的兜底。 */
-    public static final CuddleCaps BUILTIN_ONLY = CuddleCaps.sanitize(
-            CuddleConstants.PROTOCOL, CuddleConstants.PACK_FORMAT,
-            Map.of(CuddleConstants.BUILTIN_NORMAL,
-                            new CuddleCaps.Anim(CuddleConstants.DEFAULT_LOCK_TICKS, "1"),
-                    CuddleConstants.BUILTIN_TOUCH_HEAD,
-                            new CuddleCaps.Anim(CuddleConstants.DEFAULT_LOCK_TICKS, "1")));
+    private static final CuddleCaps BUILTIN_ONLY = CuddleCaps.builtinOnly();
 
     private record Entry(CuddleCaps caps, long joinTick, boolean reported, boolean timedOutNotice) {}
 

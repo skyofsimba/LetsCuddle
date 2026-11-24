@@ -27,6 +27,7 @@ import org.joml.Quaternionf;
 import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.client.CuddleCameraHandler;
 import xyz.skyofsimba.core.CuddleConstants;
+import xyz.skyofsimba.core.CuddlePlacement;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,30 +36,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 渲染接管：贴贴期间取消原版玩家渲染，自己摆好「面对面」的模型再画一遍。
+ * 1.20.1 渲染接管：贴贴期间取消原版玩家渲染，自己摆好「面对面」的模型再画一遍。
  *
- * <p>公式一个符号都不能改（original-design 7.8.3 有完整推导）：
- * <pre>
- *   push
- *   mulPose(XP 180°)              // 模型空间 Y 向上 → 世界 Y 向下翻转
- *   translate(0, -1.5, 0)         // 把 1.5 格高的模型原点拉回脚底
- *   mulPose(Ry(targetYaw))        // 朝向伙伴
- *   [body 根节点变换：translate(x, y+0.7, z) → Rz → Ry → Rx → translate(0, -0.7, 0)]
- *   renderModel
- *   pop
- * </pre>
+ * <p>矩阵链是后乘，顺序不可调换：
+ * {@code Rx(180) · T(0,-1.5,0) · Ry(targetYaw) · [body 位移 + 旋转] · model}。
+ * 取消 {@code RenderPlayerEvent.Pre} 会跳过 playerAnimator 在 {@code setupRotations} 里做的
+ * body 根节点变换，所以那几行必须由本类补上（否则 {@code torso.z = -1.0} 不生效，两人之间空 1 格）。
  *
- * <p>取消 {@code RenderPlayerEvent.Pre} 会跳过整条 {@code PlayerRenderer#render}，
- * 其中包含 playerAnimator 在 {@code setupRotations} 里做的 body 根节点变换，
- * 所以那 5 行必须由本类补上（否则 {@code cuddle_normal_receiver} 的 {@code torso.z = -1.0} 不会生效，两人之间会空出 1 格）。
- *
- * <p>v1.4 追加：
- * <ul>
- *   <li><b>阴影</b>：1.20.1 的阴影由 {@code EntityRenderDispatcher} 在渲染器返回后按<b>实体坐标</b>单独绘制，
- *       不跟随我们在 PoseStack 里的位移。这里在渲染前把当事人临时置为 invisible（阴影的绘制条件含 {@code !isInvisible()}），
- *       在 {@code AFTER_ENTITIES} 阶段立刻恢复 —— 只影响这一帧，不会让无模组客户端看到人消失。</li>
- *   <li><b>K10</b>：记录我们隐藏过谁的头，解锁后恢复。</li>
- * </ul>
+ * <p>副作用：接管期间不画盔甲/手持物/名字牌；阴影按实体坐标单独绘制，渲染前临时置为
+ * invisible，并在 {@code AFTER_ENTITIES} 阶段恢复（只影响这一帧）。第一人称会隐藏自己的头（K10）。
  */
 @Mod.EventBusSubscriber(modid = Letscuddle.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class RenderPlayerEventHandler {
@@ -111,7 +97,7 @@ public final class RenderPlayerEventHandler {
         hideShadowForThisFrame(player);
 
         PoseStack poseStack = event.getPoseStack();
-        float targetYaw = calculateYawToTarget(player, partner);
+        float targetYaw = yawTo(player, partner);
 
         poseStack.pushPose();
         // PoseStack 是后乘：最后调用的最先作用到顶点，所以下面这段的顺序不能调换
@@ -214,24 +200,15 @@ public final class RenderPlayerEventHandler {
         return local != null && local.getUUID().equals(player.getUUID());
     }
 
-    private static float calculateYawToTarget(AbstractClientPlayer from, AbstractClientPlayer to) {
-        double deltaX = to.getX() - from.getX();
-        double deltaZ = to.getZ() - from.getZ();
-        return (float) Math.toDegrees(Math.atan2(deltaZ, deltaX)) - 90.0F;
+    private static float yawTo(AbstractClientPlayer from, AbstractClientPlayer to) {
+        return CuddlePlacement.yawTo(
+                new xyz.skyofsimba.core.Vec3d(from.getX(), from.getY(), from.getZ()),
+                new xyz.skyofsimba.core.Vec3d(to.getX(), to.getY(), to.getZ()));
     }
 
     /**
-     * v1.5.1：被渲染模型相对实体坐标的<b>世界空间水平位移</b>，供第三人称镜头偏移使用。
-     *
-     * <p>渲染时的矩阵链是 {@code Rx(180) · T(0,-1.5,0) · Ry(θ) · T(px, py+0.7, pz) · Rbody · T(0,-0.7,0)}
-     * （见 {@link #onRenderPlayer}），把 (px, pz) 依次过 Ry(θ) 与 Rx(180)（只翻 y/z 符号）就得到世界位移：
-     * <pre>
-     *   dx =  px·cosθ + pz·sinθ
-     *   dz =  px·sinθ − pz·cosθ
-     * </pre>
-     * 例：接受者在 (1.3,0,0)、面向 −X（θ=90°）、body.z=−1 → 位移 (−1,0,0)，模型落在 (0.3,0,0)，正确。
-     *
-     * @return 未在贴贴中 / 动作未激活时返回 {@link Vec3#ZERO}
+     * 模型相对实体坐标的世界空间水平位移（第三人称镜头用）。
+     * 与 {@link CuddlePlacement#worldBodyOffset} 同一公式，保证模型与镜头一致。
      */
     public static Vec3 modelOffset(AbstractClientPlayer player, float partialTick) {
         Minecraft client = Minecraft.getInstance();
@@ -254,12 +231,9 @@ public final class RenderPlayerEventHandler {
         }
 
         Vec3f body = animation.get3DTransform("body", TransformType.POSITION, Vec3f.ZERO);
-        double theta = Math.toRadians(calculateYawToTarget(player, partner));
-        double px = body.getX();
-        double pz = body.getZ();
-        double dx = px * Math.cos(theta) + pz * Math.sin(theta);
-        double dz = px * Math.sin(theta) - pz * Math.cos(theta);
-        return new Vec3(dx, 0.0D, dz);
+        xyz.skyofsimba.core.Vec3d offset = CuddlePlacement.worldBodyOffset(
+                body.getX(), body.getZ(), yawTo(player, partner));
+        return new Vec3(offset.x(), offset.y(), offset.z());
     }
 
     /** 该玩家当前是否处于贴贴锁定状态（镜头事件用）。 */

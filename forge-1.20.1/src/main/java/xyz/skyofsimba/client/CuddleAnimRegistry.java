@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.core.CuddleAnimDef;
 import xyz.skyofsimba.core.CuddleAnimManifest;
+import xyz.skyofsimba.core.CuddleBuiltins;
 import xyz.skyofsimba.core.CuddleCaps;
 import xyz.skyofsimba.core.CuddleConstants;
 import xyz.skyofsimba.core.CuddleIds;
@@ -55,22 +56,9 @@ public final class CuddleAnimRegistry extends SimplePreparableReloadListener<Cud
         return animId == null ? null : snapshot.byId.get(animId);
     }
 
-    public static List<CuddleAnimDef> all() {
-        return snapshot.ordered;
-    }
-
     /** 下一个动作 id（循环，顺序 = order asc + id）；当前 id 不在列表里时回到默认动作。 */
     public static String next(String currentId) {
-        List<CuddleAnimDef> ordered = snapshot.ordered;
-        if (ordered.isEmpty()) {
-            return CuddleConstants.DEFAULT_ANIM_ID;
-        }
-        for (int i = 0; i < ordered.size(); i++) {
-            if (ordered.get(i).id().equals(currentId)) {
-                return ordered.get((i + 1) % ordered.size()).id();
-            }
-        }
-        return ordered.get(0).id();
+        return CuddleAnimDef.nextId(snapshot.ordered, currentId);
     }
 
     // ------------------------------------------------------------------ 资源重载
@@ -156,26 +144,9 @@ public final class CuddleAnimRegistry extends SimplePreparableReloadListener<Cud
             return new Snapshot(defs, ordered);
         }
 
-        /** 资源还没加载时也能显示名字的静态兜底。 */
+        /** 资源还没加载时也能显示名字、播放默认动作的静态兜底。 */
         static Snapshot builtinFallback() {
-            Map<String, CuddleAnimDef> defs = new LinkedHashMap<>();
-            defs.put(CuddleConstants.BUILTIN_NORMAL, new CuddleAnimDef(
-                    CuddleConstants.BUILTIN_NORMAL, "1",
-                    CuddleConstants.MODID + ":cuddle_normal_sender",
-                    CuddleConstants.MODID + ":cuddle_normal_receiver",
-                    "letscuddle.animation.normal", "Normal cuddle",
-                    CuddleConstants.DEFAULT_SPEED, CuddleConstants.DEFAULT_LOCK_TICKS, 0, null));
-            defs.put(CuddleConstants.BUILTIN_TOUCH_HEAD, new CuddleAnimDef(
-                    CuddleConstants.BUILTIN_TOUCH_HEAD, "1",
-                    CuddleConstants.MODID + ":cuddle_touch_sender",
-                    CuddleConstants.MODID + ":cuddle_touch_receiver",
-                    "letscuddle.animation.touch_head", "Head-pat cuddle",
-                    CuddleConstants.DEFAULT_SPEED, CuddleConstants.DEFAULT_LOCK_TICKS, 10, null));
-            return of(defs);
-        }
-
-        public boolean has(String animId) {
-            return animId != null && byId.containsKey(animId);
+            return of(CuddleBuiltins.asMap());
         }
 
         /** 上报给服务端的能力快照（最多 {@link CuddleConstants#MAX_ANIMS_PER_CLIENT} 条）。 */

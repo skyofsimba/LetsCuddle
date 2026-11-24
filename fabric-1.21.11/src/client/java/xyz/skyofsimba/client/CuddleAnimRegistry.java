@@ -1,9 +1,9 @@
 package xyz.skyofsimba.client;
 
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.resource.SimpleResourceReloadListener;
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.minecraft.resource.Resource;
 import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceReloader;
 import net.minecraft.resource.ResourceType;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -11,6 +11,7 @@ import xyz.skyofsimba.Letscuddle;
 import xyz.skyofsimba.core.CuddleAnimClip;
 import xyz.skyofsimba.core.CuddleAnimDef;
 import xyz.skyofsimba.core.CuddleAnimManifest;
+import xyz.skyofsimba.core.CuddleBuiltins;
 import xyz.skyofsimba.core.CuddleCaps;
 import xyz.skyofsimba.core.CuddleConstants;
 import xyz.skyofsimba.core.CuddleIds;
@@ -29,22 +30,21 @@ import java.util.concurrent.Executor;
  * 客户端动作注册表：同时扫描 manifest（{@code cuddle_animations}）与实际动画
  * （{@code player_animations}，PAL/playerAnimator 的复数目录）并建立 id → 剪辑的索引。
  *
- * <p>资源重载线程构建不可变快照，渲染线程只读；{@code letscuddle:normal} 缺失时保留旧快照。
+ * <p>资源重载线程构建不可变快照，游戏线程替换；{@code letscuddle:normal} 缺失时保留旧快照。
  */
-public final class CuddleAnimRegistry implements SimpleResourceReloadListener<CuddleAnimRegistry.Snapshot> {
+public final class CuddleAnimRegistry implements ResourceReloader {
 
+    private static final Identifier RELOADER_ID =
+            Identifier.of(CuddleConstants.MODID, "cuddle_animations");
     private static final String MANIFEST_DIR = "cuddle_animations";
     private static final String ANIMATION_DIR = "player_animations";
 
     private static volatile Snapshot snapshot = Snapshot.builtinFallback();
 
-    public static void register() {
-        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(new CuddleAnimRegistry());
-    }
+    private CuddleAnimRegistry() {}
 
-    @Override
-    public Identifier getFabricId() {
-        return Identifier.of(CuddleConstants.MODID, "cuddle_animations");
+    public static void register() {
+        ResourceLoader.get(ResourceType.CLIENT_RESOURCES).registerReloader(RELOADER_ID, new CuddleAnimRegistry());
     }
 
     public static Snapshot snapshot() {
@@ -61,44 +61,33 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
         return animationId == null ? null : snapshot.clips.get(animationId);
     }
 
-    public static List<CuddleAnimDef> all() {
-        return snapshot.ordered;
-    }
-
     /** 下一个动作 id（循环，顺序 = order asc + id）；当前 id 不在列表里时回到默认动作。 */
     public static String next(String currentId) {
-        List<CuddleAnimDef> ordered = snapshot.ordered;
-        if (ordered.isEmpty()) {
-            return CuddleConstants.DEFAULT_ANIM_ID;
-        }
-        for (int i = 0; i < ordered.size(); i++) {
-            if (ordered.get(i).id().equals(currentId)) {
-                return ordered.get((i + 1) % ordered.size()).id();
-            }
-        }
-        return ordered.get(0).id();
+        return CuddleAnimDef.nextId(snapshot.ordered, currentId);
     }
 
     // ------------------------------------------------------------------ 资源重载
 
     @Override
-    public CompletableFuture<Snapshot> load(ResourceManager manager, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> scan(manager), executor);
+    public CompletableFuture<Void> reload(ResourceReloader.Store store, Executor prepareExecutor,
+                                          ResourceReloader.Synchronizer synchronizer,
+                                          Executor applyExecutor) {
+        return CompletableFuture.supplyAsync(() -> scan(store.getResourceManager()), prepareExecutor)
+                .thenCompose(synchronizer::whenPrepared)
+                .thenAcceptAsync(this::apply, applyExecutor);
     }
 
-    @Override
-    public CompletableFuture<Void> apply(Snapshot prepared, ResourceManager manager, Executor executor) {
-        return CompletableFuture.runAsync(() -> {
-            if (!prepared.byId.containsKey(CuddleConstants.DEFAULT_ANIM_ID)) {
-                Letscuddle.LOGGER.error("LetsCuddle: '{}' is missing after reload; keeping the previous {} animations",
-                        CuddleConstants.DEFAULT_ANIM_ID, snapshot.byId.size());
-                return;
-            }
-            snapshot = prepared;
-            Letscuddle.LOGGER.info("LetsCuddle: loaded {} animations, {} clips",
-                    prepared.ordered.size(), prepared.clips.size());
-            CuddleClientBridge.get().sendCaps();      // 能力列表可能变了，立刻重新上报
-        }, executor);
+    /** 在游戏线程替换快照；缺默认动作时保留旧快照。 */
+    private void apply(Snapshot prepared) {
+        if (!prepared.byId.containsKey(CuddleConstants.DEFAULT_ANIM_ID)) {
+            Letscuddle.LOGGER.error("LetsCuddle: '{}' is missing after reload; keeping the previous {} animations",
+                    CuddleConstants.DEFAULT_ANIM_ID, snapshot.byId.size());
+            return;
+        }
+        snapshot = prepared;
+        Letscuddle.LOGGER.info("LetsCuddle: loaded {} animations, {} clips",
+                prepared.ordered.size(), prepared.clips.size());
+        CuddleClientBridge.get().sendCaps();      // 能力列表可能变了，立刻重新上报
     }
 
     private static Snapshot scan(ResourceManager manager) {
@@ -137,7 +126,7 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
         return Snapshot.of(defs, scanClips(manager));
     }
 
-    /** 把 playerAnimations 目录下的每份 JSON 按文件里的 {@code name} 建索引（文件名作为兜底）。 */
+    /** 把 player_animations 目录下的每份 JSON 按文件里的 {@code name} 建索引（文件名作为兜底）。 */
     private static Map<String, CuddleAnimClip> scanClips(ResourceManager manager) {
         Map<String, CuddleAnimClip> clips = new LinkedHashMap<>();
         for (Map.Entry<Identifier, Resource> entry : manager.findResources(ANIMATION_DIR,
@@ -152,9 +141,8 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
                 Letscuddle.LOGGER.warn("LetsCuddle: invalid animation JSON {}", location);
                 continue;
             }
-            String name = animationName(json);
-            if (name != null) {
-                clips.put(location.getNamespace() + ":" + name, clip);
+            if (clip.name() != null) {
+                clips.put(location.getNamespace() + ":" + clip.name(), clip);
             }
             String fileId = toId(location, ANIMATION_DIR);
             if (fileId != null) {
@@ -162,24 +150,6 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
             }
         }
         return clips;
-    }
-
-    @Nullable
-    private static String animationName(String json) {
-        try {
-            com.google.gson.JsonElement root = com.google.gson.JsonParser.parseString(json);
-            if (!root.isJsonObject()) {
-                return null;
-            }
-            com.google.gson.JsonElement name = root.getAsJsonObject().get("name");
-            if (name == null || !name.isJsonPrimitive() || !name.getAsJsonPrimitive().isString()) {
-                return null;
-            }
-            String value = name.getAsString().trim();
-            return value.isEmpty() || value.contains(":") ? null : value;
-        } catch (RuntimeException e) {
-            return null;
-        }
     }
 
     @Nullable
@@ -225,24 +195,7 @@ public final class CuddleAnimRegistry implements SimpleResourceReloadListener<Cu
         }
 
         static Snapshot builtinFallback() {
-            Map<String, CuddleAnimDef> defs = new LinkedHashMap<>();
-            defs.put(CuddleConstants.BUILTIN_NORMAL, new CuddleAnimDef(
-                    CuddleConstants.BUILTIN_NORMAL, "1",
-                    CuddleConstants.MODID + ":cuddle_normal_sender",
-                    CuddleConstants.MODID + ":cuddle_normal_receiver",
-                    "letscuddle.animation.normal", "Normal cuddle",
-                    CuddleConstants.DEFAULT_SPEED, CuddleConstants.DEFAULT_LOCK_TICKS, 0, null));
-            defs.put(CuddleConstants.BUILTIN_TOUCH_HEAD, new CuddleAnimDef(
-                    CuddleConstants.BUILTIN_TOUCH_HEAD, "1",
-                    CuddleConstants.MODID + ":cuddle_touch_sender",
-                    CuddleConstants.MODID + ":cuddle_touch_receiver",
-                    "letscuddle.animation.touch_head", "Head-pat cuddle",
-                    CuddleConstants.DEFAULT_SPEED, CuddleConstants.DEFAULT_LOCK_TICKS, 10, null));
-            return of(defs, Map.of());
-        }
-
-        public boolean has(String animId) {
-            return animId != null && byId.containsKey(animId);
+            return of(CuddleBuiltins.asMap(), Map.of());
         }
 
         public CuddleCaps caps() {

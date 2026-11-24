@@ -56,11 +56,6 @@ public final class CuddleIds {
         return ID.matcher(id).matches();
     }
 
-    /** 是否指向内置命名空间的动作。 */
-    public static boolean isBuiltin(String id) {
-        return id != null && id.startsWith(CuddleConstants.MODID + ":");
-    }
-
     /**
      * 规整内容版本：去掉首尾空白，超长截断，空串回退 {@code "1"}。
      * 内容版本只用于两端比对，不参与路径解析。
@@ -76,11 +71,5 @@ public final class CuddleIds {
         return version.length() > CuddleConstants.MAX_CONTENT_VERSION_LEN
                 ? version.substring(0, CuddleConstants.MAX_CONTENT_VERSION_LEN)
                 : version;
-    }
-
-    /** 资源路径 {@code <ns>:<path>} 的命名空间；非法 id 返回空串。 */
-    public static String namespace(String id) {
-        int split = id == null ? -1 : id.indexOf(':');
-        return split <= 0 ? "" : id.substring(0, split);
     }
 }

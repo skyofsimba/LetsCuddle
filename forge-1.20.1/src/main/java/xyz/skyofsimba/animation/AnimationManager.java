@@ -32,7 +32,7 @@ public final class AnimationManager {
 
     /** 自定义动画层 id：播放时取层必须用同一个 id。 */
     @SuppressWarnings("removal")
-    public static final ResourceLocation LAYER_ID = new ResourceLocation(Letscuddle.MODID + ":animations");
+    private static final ResourceLocation LAYER_ID = new ResourceLocation(Letscuddle.MODID + ":animations");
 
     private AnimationManager() {}
 
