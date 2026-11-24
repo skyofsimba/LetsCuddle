@@ -1,14 +1,15 @@
 package xyz.skyofsimba;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -43,18 +44,23 @@ public class Letscuddle {
     public static final RegistryObject<Item> CUDDLE_TICKET =
             ITEMS.register("cuddle_ticket", () -> new CuddleTicketItem(new Item.Properties().stacksTo(64)));
 
+    public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS =
+            DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+
+    /** 创造模式「贴贴」标签页（Forge 会把模组标签页排在原版之后，不额外声明顺序以免形成环）。 */
+    public static final RegistryObject<CreativeModeTab> CUDDLE_TAB = CREATIVE_TABS.register("main",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.letscuddle"))
+                    .icon(() -> new ItemStack(CUDDLE_TICKET.get()))
+                    .displayItems((params, output) -> output.accept(CUDDLE_TICKET.get()))
+                    .build());
+
     public Letscuddle(FMLJavaModLoadingContext context) {
         IEventBus modBus = context.getModEventBus();
         ITEMS.register(modBus);
-        modBus.addListener(this::addCreative);
+        CREATIVE_TABS.register(modBus);
 
         MinecraftForge.EVENT_BUS.register(this);
-    }
-
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
-            event.accept(CUDDLE_TICKET);
-        }
     }
 
     @SubscribeEvent

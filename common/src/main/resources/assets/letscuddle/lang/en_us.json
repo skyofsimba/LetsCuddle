@@ -20,12 +20,11 @@
   "letscuddle.message.animation_selected" : "Current animation: %s",
   "letscuddle.message.anim_unavailable" : "%s doesn't have the \"%s\" animation; using the default one",
   "letscuddle.message.anim_version_mismatch" : "You and %s use different versions of \"%s\"; using the default one",
-  "letscuddle.message.anim_missing" : "The \"%s\" animation is missing; using the default one",
-  "letscuddle.message.anim_no_permission" : "You can't select that animation yet",
   "letscuddle.message.caps_timeout" : "Your client didn't report its animations in time; only the built-in ones are available",
   "letscuddle.animation.normal" : "Normal cuddle",
   "letscuddle.animation.touch_head" : "Head-pat cuddle",
   "item.letscuddle.cuddle_ticket" : "Cuddle Ticket",
   "item.letscuddle.cuddle_ticket.desc" : "Use me to right click on your friend and send a cuddle request to him!",
-  "item.letscuddle.cuddle_ticket.animation" : "Selected animation: %s (sneak + right-click to switch)"
+  "item.letscuddle.cuddle_ticket.animation" : "Selected animation: %s (sneak + right-click to switch)",
+  "itemGroup.letscuddle" : "Let's Cuddle"
 }

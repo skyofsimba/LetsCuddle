@@ -2,8 +2,9 @@ package xyz.skyofsimba;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
@@ -14,6 +15,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.WorldSavePath;
 import org.slf4j.Logger;
@@ -43,19 +45,26 @@ public final class Letscuddle implements ModInitializer {
             .registryKey(CUDDLE_TICKET_KEY)
             .component(CuddleTicketItem.SELECTED_ANIMATION, CuddleConstants.DEFAULT_ANIM_ID));
 
-    /** 创造栏「工具与实用物品」；1.21.11 的 ItemGroups.TOOLS 是 private，只能按 id 取。 */
-    private static final RegistryKey<ItemGroup> TOOLS =
-            RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.ofVanilla("tools_and_utilities"));
+    /** 创造模式「贴贴」标签页。 */
+    public static final RegistryKey<ItemGroup> CUDDLE_TAB_KEY =
+            RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.of(MODID, "main"));
+
+    private static final ItemGroup CUDDLE_TAB = FabricItemGroup.builder()
+            .displayName(Text.translatable("itemGroup.letscuddle"))
+            .icon(() -> new ItemStack(CUDDLE_TICKET))
+            .entries((context, entries) -> entries.add(CUDDLE_TICKET))
+            .build();
 
     @Override
     public void onInitialize() {
         Registry.register(Registries.ITEM, CUDDLE_TICKET_KEY, CUDDLE_TICKET);
-        ItemGroupEvents.modifyEntriesEvent(TOOLS).register(entries -> entries.add(CUDDLE_TICKET));
+        Registry.register(Registries.ITEM_GROUP, CUDDLE_TAB_KEY, CUDDLE_TAB);
 
         CuddleNetwork.register();
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess, environment) -> CuddleCommandHandler.register(dispatcher));
         ServerTickEvents.END_SERVER_TICK.register(CuddleCommandHandler::onServerTick);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> CuddleCapsStore.clear());
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             CuddleCapsStore.onJoin(handler.player);
